@@ -4,10 +4,12 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 0;
-  background: transparent;
+  gap: 6px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.65);
   color: #f5f7ff;
+  border: 2px solid #f5f7ff;
+  box-shadow: 0 0 0 2px #000, 2px 2px 0 #000;
   transform: translateY(4px);
   opacity: 0;
   pointer-events: none;
@@ -23,28 +25,31 @@
 
 .transhot-action {
   appearance: none;
-  border: none;
+  border: 2px solid #f5f7ff;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: rgba(17, 19, 29, 0.8);
+  width: 36px;
+  height: 36px;
+  border-radius: 2px;
+  background: #000;
   color: inherit;
   cursor: pointer;
-  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
   position: relative;
+  box-shadow: inset -2px -2px 0 #111, inset 2px 2px 0 #1c1c1c, 2px 2px 0 #000;
 }
 
 .transhot-action:hover {
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  background: #0d0d0d;
+  box-shadow: inset -2px -2px 0 #111, inset 2px 2px 0 #1c1c1c, 3px 3px 0 #000;
   transform: translateY(-1px);
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
 }
 
 .transhot-action:active {
   transform: translateY(0);
-  background: rgba(255, 255, 255, 0.24);
+  background: #1a1a1a;
+  box-shadow: inset 2px 2px 0 #111, inset -2px -2px 0 #1c1c1c, 2px 2px 0 #000;
 }
 
 .transhot-action svg {
