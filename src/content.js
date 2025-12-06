@@ -82,6 +82,11 @@ function handleMouseOver(event) {
 
   currentTarget = target;
   const overlayElement = ensureOverlay();
+  if (!overlayFitsTarget(overlayElement, target)) {
+    overlayElement.classList.remove("visible");
+    currentTarget = undefined;
+    return;
+  }
   positionOverlay(overlayElement, target);
   showOverlay(overlayElement);
 }
@@ -121,7 +126,7 @@ function clearHideTimer() {
 
 function positionOverlay(element, target) {
   const rect = target.getBoundingClientRect();
-  const overlayWidth = element.offsetWidth || 76;
+  const overlayWidth = element.offsetWidth || 64;
   const preferredTop = window.scrollY + rect.top + 10;
   const centeredLeft = window.scrollX + rect.left + (rect.width - overlayWidth) / 2;
 
@@ -129,6 +134,19 @@ function positionOverlay(element, target) {
   const maxLeft = window.scrollX + rect.right - overlayWidth - 6;
   element.style.top = `${preferredTop}px`;
   element.style.left = `${Math.min(Math.max(minLeft, centeredLeft), maxLeft)}px`;
+}
+
+function overlayFitsTarget(element, target) {
+  const rect = target.getBoundingClientRect();
+  const overlayWidth = element.offsetWidth || 64;
+  const overlayHeight = element.offsetHeight || 64;
+  const horizontalPadding = 12;
+  const verticalOffset = 10;
+
+  const fitsHorizontally = rect.width >= overlayWidth + horizontalPadding;
+  const fitsVertically = rect.height >= overlayHeight + verticalOffset;
+
+  return fitsHorizontally && fitsVertically;
 }
 
 function init() {
