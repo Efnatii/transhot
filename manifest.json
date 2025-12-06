@@ -5,6 +5,7 @@
   "description": "Показывает аккуратный блок перевода и настроек при наведении на изображения и видео.",
   "permissions": ["storage"],
   "host_permissions": ["https://vision.googleapis.com/*"],
+  "options_page": "src/options.html",
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
