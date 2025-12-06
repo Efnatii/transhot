@@ -15,7 +15,8 @@
   pointer-events: none;
   transition: opacity 120ms ease, transform 160ms ease;
   z-index: 2147483647;
-  border-radius: 1px;
+  border-radius: 0;
+  image-rendering: pixelated;
 }
 
 #transhot-hover-overlay.visible {
@@ -33,7 +34,8 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border-radius: 1px;
+  border-radius: 0;
+  image-rendering: pixelated;
   background: rgba(0, 0, 0, 0.4);
   color: inherit;
   cursor: pointer;
@@ -62,4 +64,5 @@
   height: 14px;
   fill: currentColor;
   display: block;
+  shape-rendering: crispEdges;
 }
