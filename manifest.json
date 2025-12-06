@@ -3,11 +3,6 @@
   "name": "Transhot Hover Actions",
   "version": "0.1.0",
   "description": "Показывает аккуратный блок перевода при наведении на изображения и видео.",
-  "host_permissions": ["https://vision.googleapis.com/*"],
-  "background": {
-    "service_worker": "src/background.js",
-    "type": "module"
-  },
   "icons": {
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
