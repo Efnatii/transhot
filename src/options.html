@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Transhot Settings</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        max-width: 520px;
+        margin: 24px auto;
+        padding: 0 16px 32px;
+        color: #111;
+      }
+
+      h1 {
+        font-size: 20px;
+        margin-bottom: 12px;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        box-sizing: border-box;
+      }
+
+      .note {
+        margin-top: 12px;
+        color: #4b5563;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      button {
+        margin-top: 16px;
+        padding: 10px 14px;
+        background: #111827;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.65;
+        cursor: progress;
+      }
+
+      .status {
+        margin-top: 8px;
+        font-size: 13px;
+      }
+
+      .status.success {
+        color: #15803d;
+      }
+
+      .status.error {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Transhot Settings</h1>
+    <p class="note">
+      Сервис-воркер использует ключ API Google Vision. Укажите его здесь, чтобы фоновые запросы работали без дополнительных модуле
+      й.
+    </p>
+
+    <label for="vision-key">Vision API key</label>
+    <input id="vision-key" type="text" name="vision-key" placeholder="AIza..." autocomplete="off" />
+
+    <button id="save">Save key</button>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <p class="note">
+      Значение хранится в <code>chrome.storage.local</code>. Можно также задать ключ вручную через консоль в сервис-воркере, установ
+      ив <code>globalThis.VISION_API_KEY</code>.
+    </p>
+
+    <script src="options.js"></script>
+  </body>
+</html>
