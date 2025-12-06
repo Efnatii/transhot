@@ -15,7 +15,7 @@
   pointer-events: none;
   transition: opacity 120ms ease, transform 160ms ease;
   z-index: 2147483647;
-  border-radius: 0;
+  border-radius: 6px;
   image-rendering: pixelated;
 }
 
@@ -34,7 +34,7 @@
   width: 22px;
   height: 22px;
   padding: 0;
-  border-radius: 0;
+  border-radius: 6px;
   image-rendering: pixelated;
   background: rgba(0, 0, 0, 0.4);
   color: inherit;
@@ -44,9 +44,17 @@
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 }
 
-.transhot-action:hover,
-.transhot-action:focus-visible {
+
+.transhot-action:hover {
   background: rgba(13, 13, 13, 0.9);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
+  transform: translateY(-1px);
+  filter: none;
+  opacity: 1;
+}
+
+.transhot-action:focus-visible {
+  background: #0d0d0d;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
   transform: translateY(-1px);
   filter: none;
