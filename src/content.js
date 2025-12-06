@@ -35,8 +35,7 @@ function onOverlayClick(event) {
 
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
-    overlay?.classList.remove("visible");
-    currentTarget = undefined;
+    return;
   }
 }
 
