@@ -14,20 +14,12 @@
       </header>
 
       <section class="card compact">
-        <div class="card-row">
-          <label class="field-label" for="creds-path">Путь к файлу</label>
-          <input
-            id="creds-path"
-            type="text"
-            placeholder="/Users/me/Documents/vision/vision-creds.json"
-            autocomplete="off"
-          />
-        </div>
         <div class="card-row file-row">
           <input id="creds-file" type="file" accept="application/json" />
-          <p class="hint">
-            Используйте кнопку «Выбрать файл», чтобы подставить путь, или введите его вручную.
+          <p id="selected-file" class="field-label" role="status" aria-live="polite">
+            Файл не выбран
           </p>
+          <p class="hint">Используйте кнопку «Выбрать файл», чтобы выбрать JSON.</p>
         </div>
         <div class="status-row">
           <span id="status" role="status" aria-live="polite"></span>
