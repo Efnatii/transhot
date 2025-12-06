@@ -1,7 +1,8 @@
-const pathInput = document.getElementById("creds-path");
 const fileInput = document.getElementById("creds-file");
 const status = document.getElementById("status");
+const selectedFileLabel = document.getElementById("selected-file");
 let statusTimeout;
+let currentPath = "";
 
 function showStatus(message) {
   status.textContent = message;
@@ -28,16 +29,21 @@ function updatePathFromFile() {
     file.webkitRelativePath ||
     fileInput.value ||
     file.name;
-  const fileName = deriveFileName(filePath, file.name);
-
-  pathInput.dataset.fullPath = filePath;
-  pathInput.value = fileName;
+  setSelectedFile(filePath);
   savePath("Путь подставлен и сохранён автоматически", filePath, file);
 }
 
+function setSelectedFile(path) {
+  currentPath = (path ?? "").trim();
+  selectedFileLabel.dataset.fullPath = currentPath;
+  selectedFileLabel.textContent = currentPath
+    ? deriveFileName(currentPath)
+    : "Файл не выбран";
+}
+
 function savePath(message = "Путь сохранён автоматически", storedValue, file) {
-  const value = (storedValue ?? pathInput.dataset.fullPath ?? pathInput.value).trim();
-  pathInput.dataset.fullPath = value;
+  const value = (storedValue ?? selectedFileLabel.dataset.fullPath ?? currentPath).trim();
+  setSelectedFile(value);
   chrome.storage.local.set({ googleVisionCredsPath: value }, () => {
     showStatus(message);
     if (file) {
@@ -54,8 +60,7 @@ function savePath(message = "Путь сохранён автоматическ�
 function restorePath() {
   chrome.storage.local.get("googleVisionCredsPath", (result) => {
     if (result.googleVisionCredsPath) {
-      pathInput.dataset.fullPath = result.googleVisionCredsPath;
-      pathInput.value = deriveFileName(result.googleVisionCredsPath);
+      setSelectedFile(result.googleVisionCredsPath);
     }
   });
 }
@@ -63,8 +68,4 @@ function restorePath() {
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   fileInput.addEventListener("change", updatePathFromFile);
-  pathInput.addEventListener("input", () => {
-    pathInput.dataset.fullPath = pathInput.value;
-    savePath();
-  });
 });
