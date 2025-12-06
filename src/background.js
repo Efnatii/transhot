@@ -112,6 +112,7 @@ function getCredsPath() {
 async function tryReadCredsWithFs(fs, credsPath) {
   try {
     const content = await fs.readFile(credsPath, "utf8");
+    console.log("Transhot: GOOGLE_CREDS_PATH content:", content);
     return extractCreds(content);
   } catch (error) {
     console.warn("Transhot: unable to read GOOGLE_CREDS_PATH with fs", error);
@@ -126,6 +127,7 @@ async function tryReadCredsWithFetch(credsPath) {
     if (!response.ok) return null;
 
     const content = await response.text();
+    console.log("Transhot: GOOGLE_CREDS_PATH content:", content);
     return extractCreds(content);
   } catch (error) {
     console.warn("Transhot: unable to fetch GOOGLE_CREDS_PATH", error);
