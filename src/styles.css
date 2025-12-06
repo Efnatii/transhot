@@ -15,6 +15,7 @@
   pointer-events: none;
   transition: opacity 120ms ease, transform 160ms ease;
   z-index: 2147483647;
+  border-radius: 1px;
 }
 
 #transhot-hover-overlay.visible {
@@ -30,7 +31,7 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: 1px;
   background: #000;
   color: inherit;
   cursor: pointer;
@@ -56,4 +57,5 @@
   width: 14px;
   height: 14px;
   fill: currentColor;
+  display: block;
 }
