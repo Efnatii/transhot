@@ -17,38 +17,48 @@ if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
 
 async function handleRecognition(message) {
   const { imageBase64, mimeType } = message;
-  const apiKey = await resolveApiKey();
-  if (!apiKey) {
+  const auth = await resolveVisionAuth();
+  if (!auth) {
     throw new Error("Vision API key is not configured");
   }
 
   const hash = await calculateHash(imageBase64);
-  const visionResult = await runVisionRequest(apiKey, imageBase64, mimeType);
+  const visionResult = await runVisionRequest(auth, imageBase64, mimeType);
 
   return { hash, vision: visionResult };
 }
 
-async function resolveApiKey() {
-  return resolveApiKeyFromEnvFile();
+async function resolveVisionAuth() {
+  const creds = await resolveCredsFromEnvFile();
+  if (!creds) return null;
+
+  if (creds.kind === "apiKey") return creds;
+
+  const token = await getServiceAccountToken(creds).catch((error) => {
+    console.warn("Transhot: failed to exchange service account credentials", error);
+    return "";
+  });
+
+  return token ? { kind: "accessToken", token } : null;
 }
 
-async function resolveApiKeyFromEnvFile() {
+async function resolveCredsFromEnvFile() {
   const credsPath = getCredsPath();
-  if (!credsPath) return "";
+  if (!credsPath) return null;
 
   const fs = await import("fs/promises").catch(() => null);
   if (fs?.readFile) {
-    const key = await tryReadCredsWithFs(fs, credsPath);
-    if (key) return key;
+    const creds = await tryReadCredsWithFs(fs, credsPath);
+    if (creds) return creds;
   }
 
   if (typeof fetch !== "undefined") {
-    const key = await tryReadCredsWithFetch(credsPath);
-    if (key) return key;
+    const creds = await tryReadCredsWithFetch(credsPath);
+    if (creds) return creds;
   }
 
   console.warn("Transhot: GOOGLE_CREDS_PATH is set but no API key was found or file could not be read");
-  return "";
+  return null;
 }
 
 function getCredsPath() {
@@ -66,10 +76,10 @@ function getCredsPath() {
 async function tryReadCredsWithFs(fs, credsPath) {
   try {
     const content = await fs.readFile(credsPath, "utf8");
-    return extractApiKey(content);
+    return extractCreds(content);
   } catch (error) {
     console.warn("Transhot: unable to read GOOGLE_CREDS_PATH with fs", error);
-    return "";
+    return null;
   }
 }
 
@@ -77,13 +87,13 @@ async function tryReadCredsWithFetch(credsPath) {
   try {
     const url = toFetchableUrl(credsPath);
     const response = await fetch(url);
-    if (!response.ok) return "";
+    if (!response.ok) return null;
 
     const content = await response.text();
-    return extractApiKey(content);
+    return extractCreds(content);
   } catch (error) {
     console.warn("Transhot: unable to fetch GOOGLE_CREDS_PATH", error);
-    return "";
+    return null;
   }
 }
 
@@ -95,20 +105,127 @@ function toFetchableUrl(credsPath) {
   return credsPath;
 }
 
-function extractApiKey(jsonContent) {
+function extractCreds(jsonContent) {
   try {
     const parsed = JSON.parse(jsonContent);
-    return (parsed.apiKey || parsed.api_key || parsed.key || "").trim();
+    const apiKey = (parsed.apiKey || parsed.api_key || parsed.key || "").trim();
+    if (apiKey) return { kind: "apiKey", apiKey };
+
+    if (isServiceAccount(parsed)) {
+      return {
+        kind: "serviceAccount",
+        clientEmail: parsed.client_email,
+        privateKey: parsed.private_key,
+        tokenUri: parsed.token_uri,
+      };
+    }
+
+    return null;
   } catch (error) {
     console.warn("Transhot: GOOGLE_CREDS_PATH content is not valid JSON", error);
-    return "";
+    return null;
   }
 }
 
-async function runVisionRequest(apiKey, imageBase64, mimeType) {
-  const response = await fetch(`${VISION_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+function isServiceAccount(parsed) {
+  return (
+    parsed?.type === "service_account" &&
+    typeof parsed.private_key === "string" && parsed.private_key &&
+    typeof parsed.client_email === "string" && parsed.client_email
+  );
+}
+
+async function getServiceAccountToken(creds) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const claimSet = {
+    iss: creds.clientEmail,
+    sub: creds.clientEmail,
+    aud: creds.tokenUri || "https://oauth2.googleapis.com/token",
+    scope: "https://www.googleapis.com/auth/cloud-vision",
+    iat: now,
+    exp: now + 3600,
+  };
+
+  const jwt = await signJwt(header, claimSet, creds.privateKey);
+
+  const response = await fetch(claimSet.aud, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Service account token request failed: ${response.status} ${errorText || response.statusText}`);
+  }
+
+  const body = await response.json();
+  return body?.access_token || "";
+}
+
+async function signJwt(header, payload, privateKeyPem) {
+  const encoder = new TextEncoder();
+  const unsigned = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
+  const keyData = pemToArrayBuffer(privateKeyPem);
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signatureBuffer = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, encoder.encode(unsigned));
+  const signature = base64UrlEncodeFromBuffer(signatureBuffer);
+  return `${unsigned}.${signature}`;
+}
+
+function pemToArrayBuffer(pem) {
+  const base64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function base64UrlEncode(jsonString) {
+  const base64 = btoa(jsonString)
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+  return base64;
+}
+
+function base64UrlEncodeFromBuffer(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+async function runVisionRequest(auth, imageBase64, mimeType) {
+  const headers = { "Content-Type": "application/json" };
+  let url = VISION_ENDPOINT;
+
+  if (auth.kind === "apiKey") {
+    url = `${url}?key=${encodeURIComponent(auth.apiKey)}`;
+  }
+
+  if (auth.kind === "accessToken") {
+    headers.Authorization = `Bearer ${auth.token}`;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
     body: JSON.stringify({
       requests: [
         {
