@@ -29,6 +29,18 @@ async function handleRecognition(message) {
 }
 
 async function resolveVisionAuth() {
+  const directCreds = resolveCredsFromEnvVars();
+  if (directCreds) {
+    if (directCreds.kind === "apiKey") return directCreds;
+
+    const token = await getServiceAccountToken(directCreds).catch((error) => {
+      console.warn("Transhot: failed to exchange service account credentials from env vars", error);
+      return "";
+    });
+
+    if (token) return { kind: "accessToken", token };
+  }
+
   const creds = await resolveCredsFromEnvFile();
   if (!creds) return null;
 
@@ -40,6 +52,30 @@ async function resolveVisionAuth() {
   });
 
   return token ? { kind: "accessToken", token } : null;
+}
+
+function resolveCredsFromEnvVars() {
+  const apiKey = readEnvVar(["GOOGLE_API_KEY", "GOOGLE_VISION_API_KEY"]);
+  if (apiKey) return { kind: "apiKey", apiKey };
+
+  const serviceAccountJson = readEnvVar(["GOOGLE_SERVICE_ACCOUNT_JSON"]);
+  if (serviceAccountJson) {
+    return extractCreds(serviceAccountJson) ?? null;
+  }
+
+  return null;
+}
+
+function readEnvVar(names) {
+  for (const name of names) {
+    const valueFromProcess = typeof process !== "undefined" ? process?.env?.[name] : "";
+    if (valueFromProcess?.trim()) return valueFromProcess.trim();
+
+    const valueFromGlobal = typeof globalThis !== "undefined" ? globalThis?.[name] : "";
+    if (typeof valueFromGlobal === "string" && valueFromGlobal.trim()) return valueFromGlobal.trim();
+  }
+
+  return "";
 }
 
 async function resolveCredsFromEnvFile() {
@@ -129,9 +165,18 @@ function extractCreds(jsonContent) {
 
     return null;
   } catch (error) {
+    const trimmed = (jsonContent || "").trim();
+    if (trimmed && isLikelyApiKey(trimmed)) {
+      return { kind: "apiKey", apiKey: trimmed };
+    }
+
     console.warn("Transhot: GOOGLE_CREDS_PATH content is not valid JSON", error);
     return null;
   }
+}
+
+function isLikelyApiKey(value) {
+  return /^AIza[0-9A-Za-z-_]{20,}$/.test(value) || value.length >= 30;
 }
 
 function isServiceAccount(parsed) {
