@@ -1,6 +1,5 @@
 const OVERLAY_ID = "transhot-hover-overlay";
 const ACTION_TRANSLATE = "translate";
-const ACTION_SETTINGS = "settings";
 
 let overlay;
 let hideTimer;
@@ -13,11 +12,6 @@ const icons = {
       <path d="M19.67 10h3.58L21 21h-3l-.66-3h-3.18L13.5 21h-2.94l4.94-11.86a1.5 1.5 0 0 1 1.39-.95h2.78ZM18.2 16.14h2.52l-.81-3.63h-.9l-.81 3.63Z" />
     </svg>
   `,
-  settings: `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M19.14 12.94a7.07 7.07 0 0 0 .05-.94 7.07 7.07 0 0 0-.05-.94l2-1.55a.5.5 0 0 0 .12-.64l-1.9-3.3a.5.5 0 0 0-.61-.22l-2.36.95a6.93 6.93 0 0 0-1.64-.94l-.36-2.48A.5.5 0 0 0 13.83 2h-3.66a.5.5 0 0 0-.5.43l-.36 2.48c-.6.24-1.16.55-1.67.94l-2.35-.95a.5.5 0 0 0-.61.22l-1.9 3.3a.5.5 0 0 0 .12.64l2 1.55a7.07 7.07 0 0 0-.05.94 7.07 7.07 0 0 0 .05.94l-2 1.55a.5.5 0 0 0-.12.64l1.9 3.3a.5.5 0 0 0 .61.22l2.35-.95c.5.39 1.07.7 1.67.94l.36 2.48a.5.5 0 0 0 .5.43h3.66a.5.5 0 0 0 .5-.43l.36-2.48c.6-.24 1.16-.55 1.66-.94l2.36.95a.5.5 0 0 0 .61-.22l1.9-3.3a.5.5 0 0 0-.12-.64l-2-1.55ZM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
-    </svg>
-  `
 };
 
 function ensureOverlay() {
@@ -30,10 +24,6 @@ function ensureOverlay() {
     <button class="transhot-action" data-action="${ACTION_TRANSLATE}" aria-label="Перевести" title="Перевести">
       ${icons.translate}
       <span class="transhot-tooltip">Перевести</span>
-    </button>
-    <button class="transhot-action" data-action="${ACTION_SETTINGS}" aria-label="Настройки" title="Настройки">
-      ${icons.settings}
-      <span class="transhot-tooltip">Настройки</span>
     </button>
   `;
 
@@ -52,8 +42,6 @@ function onOverlayClick(event) {
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
     console.info("Transhot: translate action triggered", currentTarget);
-  } else if (action === ACTION_SETTINGS) {
-    console.info("Transhot: settings action triggered");
   }
 }
 
