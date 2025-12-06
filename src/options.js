@@ -14,7 +14,11 @@ function updatePathFromFile() {
   const file = fileInput.files?.[0];
   if (!file) return;
 
-  const filePath = file.path || file.webkitRelativePath || file.name;
+  const filePath =
+    file.path ||
+    file.webkitRelativePath ||
+    fileInput.value ||
+    file.name;
   pathInput.value = filePath;
   savePath("Путь подставлен и сохранён автоматически");
 }
