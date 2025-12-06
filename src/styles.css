@@ -33,7 +33,6 @@
   justify-content: center;
 }
 
-
 .transhot-icon-button {
   width: 44px;
   height: 44px;
@@ -41,7 +40,7 @@
   border: none;
   background: transparent;
   border-radius: 10px;
-  transition: transform 140ms ease;
+  transition: transform 140ms ease, opacity 120ms ease;
 }
 
 .transhot-icon-button:hover {
@@ -71,4 +70,90 @@
   stroke: #000;
   stroke-width: 1.4;
   stroke-linejoin: round;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.spinner::after {
+  content: "";
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 0, 0, 0.22);
+  border-top-color: #fff;
+  animation: spin 900ms linear infinite;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.transhot-icon-button.is-loading .spinner {
+  opacity: 1;
+}
+
+.transhot-icon-button.is-loading .icon-default,
+.transhot-icon-button.is-loading .progress-bar,
+.transhot-icon-button.is-loading .check,
+.transhot-icon-button.is-loading .icon-success {
+  opacity: 0;
+}
+
+.transhot-icon-button.is-complete {
+  opacity: 0;
+}
+
+.icon-success {
+  position: absolute;
+  inset: 9px;
+  opacity: 0;
+  color: #0d9300;
+  transition: opacity 120ms ease;
+}
+
+.transhot-icon-button.is-complete .icon-success {
+  opacity: 1;
+}
+
+.progress-bar {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 140ms ease;
+  opacity: 0.9;
+}
+
+.transhot-icon-button.is-loading .progress-bar {
+  transform: scaleX(1);
+}
+
+.check {
+  position: absolute;
+  inset: 0;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.transhot-icon-button.is-complete .check {
+  opacity: 1;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

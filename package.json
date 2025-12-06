@@ -1,0 +1,13 @@
+{
+  "name": "transhot",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Hover actions for OCR via Google Vision",
+  "scripts": {
+    "lint": "echo \"No lint configured\"",
+    "build": "echo \"No build step required\""
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^4.5.0"
+  }
+}
