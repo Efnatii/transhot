@@ -1,4 +1,3 @@
-const MANUAL_API_KEY = typeof globalThis !== "undefined" ? globalThis.VISION_API_KEY || "" : "";
 const VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
 
 if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
@@ -30,18 +29,80 @@ async function handleRecognition(message) {
 }
 
 async function resolveApiKey() {
-  if (MANUAL_API_KEY) return MANUAL_API_KEY;
+  return resolveApiKeyFromEnvFile();
+}
 
-  if (typeof chrome !== "undefined" && chrome.storage?.local?.get) {
-    try {
-      const stored = await chrome.storage.local.get("visionApiKey");
-      if (stored?.visionApiKey) return stored.visionApiKey;
-    } catch (error) {
-      console.warn("Transhot: unable to read API key from storage", error);
-    }
+async function resolveApiKeyFromEnvFile() {
+  const credsPath = getCredsPath();
+  if (!credsPath) return "";
+
+  const fs = await import("fs/promises").catch(() => null);
+  if (fs?.readFile) {
+    const key = await tryReadCredsWithFs(fs, credsPath);
+    if (key) return key;
+  }
+
+  if (typeof fetch !== "undefined") {
+    const key = await tryReadCredsWithFetch(credsPath);
+    if (key) return key;
+  }
+
+  console.warn("Transhot: GOOGLE_CREDS_PATH is set but no API key was found or file could not be read");
+  return "";
+}
+
+function getCredsPath() {
+  if (typeof process !== "undefined" && process?.env?.GOOGLE_CREDS_PATH) {
+    return process.env.GOOGLE_CREDS_PATH;
+  }
+
+  if (typeof globalThis !== "undefined" && globalThis.GOOGLE_CREDS_PATH) {
+    return globalThis.GOOGLE_CREDS_PATH;
   }
 
   return "";
+}
+
+async function tryReadCredsWithFs(fs, credsPath) {
+  try {
+    const content = await fs.readFile(credsPath, "utf8");
+    return extractApiKey(content);
+  } catch (error) {
+    console.warn("Transhot: unable to read GOOGLE_CREDS_PATH with fs", error);
+    return "";
+  }
+}
+
+async function tryReadCredsWithFetch(credsPath) {
+  try {
+    const url = toFetchableUrl(credsPath);
+    const response = await fetch(url);
+    if (!response.ok) return "";
+
+    const content = await response.text();
+    return extractApiKey(content);
+  } catch (error) {
+    console.warn("Transhot: unable to fetch GOOGLE_CREDS_PATH", error);
+    return "";
+  }
+}
+
+function toFetchableUrl(credsPath) {
+  if (/^(https?:|file:)/i.test(credsPath)) return credsPath;
+  if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
+    return chrome.runtime.getURL(credsPath);
+  }
+  return credsPath;
+}
+
+function extractApiKey(jsonContent) {
+  try {
+    const parsed = JSON.parse(jsonContent);
+    return (parsed.apiKey || parsed.api_key || parsed.key || "").trim();
+  } catch (error) {
+    console.warn("Transhot: GOOGLE_CREDS_PATH content is not valid JSON", error);
+    return "";
+  }
 }
 
 async function runVisionRequest(apiKey, imageBase64, mimeType) {
