@@ -99,6 +99,13 @@ async function tryReadCredsWithFetch(credsPath) {
 
 function toFetchableUrl(credsPath) {
   if (/^(https?:|file:)/i.test(credsPath)) return credsPath;
+
+  if (/^[a-zA-Z]:[\\/]/.test(credsPath) || credsPath.startsWith("\\\\")) {
+    const normalized = credsPath.replace(/\\/g, "/");
+    const withLeadingSlash = normalized.startsWith("/") ? normalized : `/${normalized}`;
+    return `file://${withLeadingSlash}`;
+  }
+
   if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
     return chrome.runtime.getURL(credsPath);
   }
