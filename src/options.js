@@ -1,12 +1,13 @@
 const pathInput = document.getElementById("creds-path");
 const fileInput = document.getElementById("creds-file");
-const saveButton = document.getElementById("save-button");
 const status = document.getElementById("status");
+let statusTimeout;
 
 function showStatus(message) {
   status.textContent = message;
   status.classList.add("visible");
-  setTimeout(() => status.classList.remove("visible"), 1600);
+  clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(() => status.classList.remove("visible"), 1600);
 }
 
 function updatePathFromFile() {
@@ -15,13 +16,13 @@ function updatePathFromFile() {
 
   const filePath = file.path || file.webkitRelativePath || file.name;
   pathInput.value = filePath;
-  showStatus("Путь подставлен из выбранного файла");
+  savePath("Путь подставлен и сохранён автоматически");
 }
 
-function savePath() {
+function savePath(message = "Путь сохранён автоматически") {
   const value = pathInput.value.trim();
   chrome.storage.local.set({ googleVisionCredsPath: value }, () => {
-    showStatus("Сохранено");
+    showStatus(message);
   });
 }
 
@@ -36,5 +37,5 @@ function restorePath() {
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   fileInput.addEventListener("change", updatePathFromFile);
-  saveButton.addEventListener("click", savePath);
+  pathInput.addEventListener("input", () => savePath());
 });
