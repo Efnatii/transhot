@@ -50,33 +50,12 @@ async function onOverlayClick(event) {
       if (result?.ok) {
         markButtonComplete(button);
       } else {
-        handleRecognitionError(result?.error);
+        console.error("Transhot: vision error", result?.error);
         resetButtonState(button);
       }
     } catch (error) {
-      handleRecognitionError(error?.message ?? error);
+      console.error("Transhot: vision error", error);
       resetButtonState(button);
-    }
-  }
-}
-
-let hasPromptedForApiKey = false;
-
-function handleRecognitionError(message) {
-  console.error("Transhot: vision error", message);
-
-  if (typeof message !== "string") return;
-  if (!message.includes("Vision API key is not configured")) return;
-  if (hasPromptedForApiKey) return;
-
-  hasPromptedForApiKey = true;
-
-  const promptText =
-    "Укажите ключ Google Vision в настройках Transhot, иначе распознавание не работает. Открыть страницу настроек сейчас?";
-
-  if (window.confirm(promptText)) {
-    if (typeof chrome !== "undefined" && chrome.runtime?.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
     }
   }
 }
