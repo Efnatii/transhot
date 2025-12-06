@@ -102,14 +102,14 @@ function clearHideTimer() {
 
 function positionOverlay(element, target) {
   const rect = target.getBoundingClientRect();
-  const overlayWidth = element.offsetWidth || 78;
-  const preferredTop = window.scrollY + rect.top + 8;
-  const preferredLeft = window.scrollX + rect.right - overlayWidth - 8;
+  const overlayWidth = element.offsetWidth || 76;
+  const preferredTop = window.scrollY + rect.top + 10;
+  const centeredLeft = window.scrollX + rect.left + (rect.width - overlayWidth) / 2;
 
-  const minLeft = window.scrollX + 8;
-  const maxLeft = window.scrollX + window.innerWidth - overlayWidth - 8;
-  element.style.top = `${Math.max(window.scrollY + 8, preferredTop)}px`;
-  element.style.left = `${Math.min(Math.max(minLeft, preferredLeft), maxLeft)}px`;
+  const minLeft = window.scrollX + rect.left + 6;
+  const maxLeft = window.scrollX + rect.right - overlayWidth - 6;
+  element.style.top = `${preferredTop}px`;
+  element.style.left = `${Math.min(Math.max(minLeft, centeredLeft), maxLeft)}px`;
 }
 
 function init() {
