@@ -30,7 +30,7 @@ function updatePathFromFile() {
     fileInput.value ||
     file.name;
   setSelectedFile(filePath);
-  savePath("Путь подставлен и сохранён автоматически", filePath, file);
+  savePath("Путь подставлен и сохранён автоматически", filePath);
 }
 
 function setSelectedFile(path) {
@@ -41,19 +41,11 @@ function setSelectedFile(path) {
     : "Файл не выбран";
 }
 
-function savePath(message = "Путь сохранён автоматически", storedValue, file) {
+function savePath(message = "Путь сохранён автоматически", storedValue) {
   const value = (storedValue ?? selectedFileLabel.dataset.fullPath ?? currentPath).trim();
   setSelectedFile(value);
   chrome.storage.local.set({ googleVisionCredsPath: value }, () => {
     showStatus(message);
-    if (file) {
-      file
-        .text()
-        .then((text) => {
-          console.log("Содержимое файла:", text);
-        })
-        .catch((error) => console.error("Не удалось прочитать файл:", error));
-    }
   });
 }
 
