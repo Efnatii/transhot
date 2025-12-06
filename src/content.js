@@ -5,15 +5,6 @@ let overlay;
 let hideTimer;
 let currentTarget;
 
-const icons = {
-  translate: `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 4h8l-1 3H5.84c.55 1.6 1.63 3.04 3.09 4.39.91-.83 1.78-1.83 2.47-2.9h3.05c-.92 1.78-2.18 3.45-3.74 4.96l4.14 3.99-2.11 1.62-4.24-4.32c-1.37 1.07-2.93 1.96-4.7 2.71L2 14.92c1.38-.55 2.64-1.18 3.78-1.93C4.56 11.58 3.18 9.8 2.41 8H1l1-3h1Z" />
-      <path d="M19.67 10h3.58L21 21h-3l-.66-3h-3.18L13.5 21h-2.94l4.94-11.86a1.5 1.5 0 0 1 1.39-.95h2.78ZM18.2 16.14h2.52l-.81-3.63h-.9l-.81 3.63Z" />
-    </svg>
-  `,
-};
-
 function ensureOverlay() {
   if (overlay) return overlay;
 
@@ -21,14 +12,12 @@ function ensureOverlay() {
   overlay.id = OVERLAY_ID;
   overlay.className = "transhot-overlay";
   overlay.innerHTML = `
-    <button class="transhot-action transhot-fancy-button" data-action="${ACTION_TRANSLATE}" aria-label="Перевести">
-      <span class="transhot-button-surface">
-        <span class="text">Submit</span>
-        <span class="progress-bar" aria-hidden="true"></span>
-        <svg viewBox="0 0 25 30" aria-hidden="true">
-          <path class="check" d="M2,19.2C5.9,23.6,9.4,28,9.4,28L23,2" />
-        </svg>
-      </span>
+    <button class="transhot-action transhot-icon-button" data-action="${ACTION_TRANSLATE}" aria-label="Перевести">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 4h8v3H9.83a9.7 9.7 0 0 0 1.39 2.22 16 16 0 0 0 2.48-3.72h3.05c-.8 1.66-1.8 3.2-2.95 4.6l2.82 2.58-1.77 1.6-3.1-3c-.9.76-1.88 1.46-2.96 2.1L6 11.86c.82-.35 1.58-.76 2.3-1.23A9 9 0 0 1 6.7 8.05H5Z" />
+        <path d="M15.5 10.5h3.1L22 20h-2.4l-.6-1.75h-2.9L15.5 20h-2.4l2.74-7.35a.9.9 0 0 1 .86-.6Zm.3 5.1h2.02l-.64-1.9h-.72z" />
+        <path d="M6.5 16.5h4V19h-4z" />
+      </svg>
     </button>
   `;
 

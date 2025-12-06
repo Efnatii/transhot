@@ -6,7 +6,6 @@
   justify-content: center;
   gap: 0;
   padding: 0;
-  color: #f5f7ff;
   transform: translateY(4px);
   opacity: 0;
   pointer-events: none;
@@ -34,95 +33,38 @@
   justify-content: center;
 }
 
-.transhot-fancy-button {
-  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.45));
-  transition: transform 180ms ease, filter 180ms ease;
+
+.transhot-icon-button {
+  width: 52px;
+  height: 52px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  transition: transform 140ms ease;
 }
 
-.transhot-fancy-button:focus-visible {
-  outline: 2px solid #71dfbe;
-  outline-offset: 4px;
-}
-
-.transhot-fancy-button:hover {
+.transhot-icon-button:hover {
   transform: translateY(-1px);
-  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.55));
 }
 
-.transhot-fancy-button:active {
+.transhot-icon-button:active {
   transform: translateY(0);
 }
 
-.transhot-button-surface {
-  position: relative;
-  width: 200px;
-  height: 80px;
-  background: #2b2d2f;
-  border-radius: 10px;
-  overflow: hidden;
-  color: #71dfbe;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font: bold 1.25rem/1 Poppins, "Helvetica Neue", Arial, sans-serif;
-  border: 2px solid #1d1f20;
+.transhot-icon-button:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 4px;
 }
 
-.transhot-button-surface .text {
-  position: relative;
-  z-index: 2;
-  transition: opacity 140ms ease;
-}
-
-.transhot-button-surface .progress-bar {
-  position: absolute;
-  height: 10px;
-  width: 0;
-  right: 0;
-  top: 50%;
-  left: 0;
-  border-radius: 200px;
-  transform: translateY(-50%);
-  background: #71dfbe;
-  z-index: 1;
-}
-
-.transhot-fancy-button svg {
-  width: 30px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  opacity: 0;
-}
-
-.transhot-fancy-button .check {
-  fill: none;
-  stroke: #1d1f20;
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.transhot-fancy-button.is-animating .text {
-  opacity: 0;
-}
-
-.transhot-fancy-button.is-animating .transhot-button-surface {
-  border-radius: 100px;
-}
-
-.transhot-fancy-button.is-animating .progress-bar {
+.transhot-icon-button svg {
   width: 100%;
+  height: 100%;
 }
 
-.transhot-fancy-button.is-complete .transhot-button-surface {
-  background: #71dfbe;
-  border-color: #2b2d2f;
-}
-
-.transhot-fancy-button.is-complete svg {
-  opacity: 1;
-  transition: opacity 160ms ease;
+.transhot-icon-button path {
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
 }
