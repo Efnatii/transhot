@@ -7,7 +7,5 @@
     "lint": "echo \"No lint configured\"",
     "build": "echo \"No build step required\""
   },
-  "dependencies": {
-    "@google-cloud/vision": "^4.5.0"
-  }
+  "dependencies": {}
 }

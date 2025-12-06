@@ -3,7 +3,7 @@
   "name": "Transhot Hover Actions",
   "version": "0.1.0",
   "description": "Показывает аккуратный блок перевода и настроек при наведении на изображения и видео.",
-  "permissions": [],
+  "permissions": ["storage"],
   "host_permissions": ["https://vision.googleapis.com/*"],
   "background": {
     "service_worker": "src/background.js",

@@ -1,57 +1,82 @@
-import { ImageAnnotatorClient } from "@google-cloud/vision";
-import { createHash } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+const MANUAL_API_KEY = typeof globalThis !== "undefined" ? globalThis.VISION_API_KEY || "" : "";
+const VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
 
-const CREDS_PATH = process.env.GOOGLE_CREDS_PATH;
-const RESULTS_DIR = process.env.TRANSHOT_RESULTS_DIR;
+if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type !== "transhot/recognize") return;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+    handleRecognition(message)
+      .then((result) => sendResponse({ ok: true, ...result }))
+      .catch((error) => {
+        console.error("Transhot: recognition failed", error);
+        sendResponse({ ok: false, error: error.message });
+      });
 
-const client = new ImageAnnotatorClient({
-  keyFilename: CREDS_PATH,
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== "transhot/recognize") return;
-
-  handleRecognition(message)
-    .then((result) => sendResponse({ ok: true, ...result }))
-    .catch((error) => {
-      console.error("Transhot: recognition failed", error);
-      sendResponse({ ok: false, error: error.message });
-    });
-
-  return true;
-});
+    return true;
+  });
+}
 
 async function handleRecognition(message) {
   const { imageBase64, mimeType } = message;
-  const buffer = Buffer.from(imageBase64, "base64");
-  const hash = createHash("sha256").update(buffer).digest("hex");
+  const apiKey = await resolveApiKey();
+  if (!apiKey) {
+    throw new Error("Vision API key is not configured");
+  }
 
-  const [visionResult] = await client.textDetection({
-    image: { content: buffer },
-  });
+  const hash = await calculateHash(imageBase64);
+  const visionResult = await runVisionRequest(apiKey, imageBase64, mimeType);
 
-  const folderPath = await ensureResultDirectory(hash);
-  const outputPath = join(folderPath, "result.json");
-  const payload = {
-    mimeType,
-    hash,
-    createdAt: new Date().toISOString(),
-    vision: visionResult,
-  };
-
-  await writeFile(outputPath, JSON.stringify(payload, null, 2), "utf8");
-  return { hash, outputPath };
+  return { hash, vision: visionResult };
 }
 
-async function ensureResultDirectory(hash) {
-  const baseDir = RESULTS_DIR || join(__dirname, "..", "recognized");
-  const folderPath = join(baseDir, hash);
-  await mkdir(folderPath, { recursive: true });
-  return folderPath;
+async function resolveApiKey() {
+  if (MANUAL_API_KEY) return MANUAL_API_KEY;
+
+  if (typeof chrome !== "undefined" && chrome.storage?.local?.get) {
+    try {
+      const stored = await chrome.storage.local.get("visionApiKey");
+      if (stored?.visionApiKey) return stored.visionApiKey;
+    } catch (error) {
+      console.warn("Transhot: unable to read API key from storage", error);
+    }
+  }
+
+  return "";
+}
+
+async function runVisionRequest(apiKey, imageBase64, mimeType) {
+  const response = await fetch(`${VISION_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requests: [
+        {
+          image: { content: imageBase64 },
+          features: [{ type: "TEXT_DETECTION" }],
+          imageContext: mimeType ? { mimeType } : undefined,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Vision API returned ${response.status}: ${errorText || response.statusText}`);
+  }
+
+  const body = await response.json();
+  return body?.responses?.[0] ?? null;
+}
+
+async function calculateHash(base64String) {
+  const binary = atob(base64String);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
