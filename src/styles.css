@@ -39,13 +39,13 @@
   cursor: pointer;
   transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, opacity 120ms ease;
   position: relative;
-  box-shadow: none;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 }
 
 .transhot-action:hover,
 .transhot-action:focus-visible {
   background: rgba(13, 13, 13, 0.9);
-  box-shadow: none;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
   transform: translateY(-1px);
   filter: none;
   opacity: 1;
@@ -54,7 +54,7 @@
 .transhot-action:active {
   transform: translateY(0);
   background: rgba(26, 26, 26, 0.9);
-  box-shadow: none;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
 }
 
 .transhot-action svg {
