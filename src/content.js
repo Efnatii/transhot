@@ -21,9 +21,8 @@ function ensureOverlay() {
   overlay.id = OVERLAY_ID;
   overlay.className = "transhot-overlay";
   overlay.innerHTML = `
-    <button class="transhot-action" data-action="${ACTION_TRANSLATE}" aria-label="Перевести" title="Перевести">
+    <button class="transhot-action" data-action="${ACTION_TRANSLATE}" aria-label="Перевести">
       ${icons.translate}
-      <span class="transhot-tooltip">Перевести</span>
     </button>
   `;
 

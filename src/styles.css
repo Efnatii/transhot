@@ -28,9 +28,9 @@
   border: 2px solid #f5f7ff;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   background: #000;
   color: inherit;
   cursor: pointer;
@@ -53,30 +53,7 @@
 }
 
 .transhot-action svg {
-  width: 22px;
-  height: 22px;
+  width: 14px;
+  height: 14px;
   fill: currentColor;
-}
-
-.transhot-tooltip {
-  position: absolute;
-  bottom: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(17, 19, 29, 0.9);
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 11px;
-  line-height: 1.2;
-  color: #e8ecff;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.transhot-action:hover .transhot-tooltip {
-  opacity: 1;
-  transform: translate(-50%, -2px);
 }
