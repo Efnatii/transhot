@@ -21,8 +21,14 @@ function ensureOverlay() {
   overlay.id = OVERLAY_ID;
   overlay.className = "transhot-overlay";
   overlay.innerHTML = `
-    <button class="transhot-action" data-action="${ACTION_TRANSLATE}" aria-label="Перевести">
-      ${icons.translate}
+    <button class="transhot-action transhot-fancy-button" data-action="${ACTION_TRANSLATE}" aria-label="Перевести">
+      <span class="transhot-button-surface">
+        <span class="text">Submit</span>
+        <span class="progress-bar" aria-hidden="true"></span>
+        <svg viewBox="0 0 25 30" aria-hidden="true">
+          <path class="check" d="M2,19.2C5.9,23.6,9.4,28,9.4,28L23,2" />
+        </svg>
+      </span>
     </button>
   `;
 
@@ -38,10 +44,47 @@ function onOverlayClick(event) {
   const button = event.target.closest(".transhot-action");
   if (!button) return;
 
+  startButtonAnimation(button);
+
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
     console.info("Transhot: translate action triggered", currentTarget);
   }
+}
+
+function startButtonAnimation(button) {
+  const progressBar = button.querySelector(".progress-bar");
+  const checkPath = button.querySelector(".check");
+  if (!progressBar || !checkPath) return;
+
+  if (button.dataset.animating === "true") return;
+  button.dataset.animating = "true";
+
+  const pathLength = checkPath.getTotalLength();
+  checkPath.style.strokeDasharray = pathLength.toString();
+  checkPath.style.strokeDashoffset = pathLength.toString();
+
+  button.classList.remove("is-complete");
+  button.classList.add("is-animating");
+
+  progressBar.style.transition = "none";
+  progressBar.style.width = "0px";
+  // Force style updates before applying the transition
+  void progressBar.offsetWidth;
+  progressBar.style.transition = "width 1800ms linear";
+  progressBar.style.width = "100%";
+
+  window.setTimeout(() => {
+    button.classList.remove("is-animating");
+    button.classList.add("is-complete");
+    progressBar.style.transition = "width 250ms ease";
+    progressBar.style.width = "0";
+    checkPath.style.transition = "stroke-dashoffset 260ms ease-in-out";
+    checkPath.style.strokeDashoffset = "0";
+    window.setTimeout(() => {
+      button.dataset.animating = "false";
+    }, 500);
+  }, 2000);
 }
 
 function handleMouseOver(event) {

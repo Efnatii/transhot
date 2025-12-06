@@ -4,12 +4,9 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 2px;
-  background: rgba(0, 0, 0, 0.4);
+  gap: 0;
+  padding: 0;
   color: #f5f7ff;
-  border: 2px solid #f5f7ff;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4), 2px 2px 0 rgba(0, 0, 0, 0.4);
   transform: translateY(4px);
   opacity: 0;
   pointer-events: none;
@@ -27,50 +24,105 @@
 
 .transhot-action {
   appearance: none;
-  border: 2px solid #f5f7ff;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+.transhot-fancy-button {
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.45));
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.transhot-fancy-button:focus-visible {
+  outline: 2px solid #71dfbe;
+  outline-offset: 4px;
+}
+
+.transhot-fancy-button:hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.55));
+}
+
+.transhot-fancy-button:active {
+  transform: translateY(0);
+}
+
+.transhot-button-surface {
+  position: relative;
+  width: 200px;
+  height: 80px;
+  background: #2b2d2f;
+  border-radius: 10px;
+  overflow: hidden;
+  color: #71dfbe;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 6px;
-  image-rendering: pixelated;
-  background: rgba(0, 0, 0, 0.4);
-  color: inherit;
-  cursor: pointer;
-  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease, filter 120ms ease, opacity 120ms ease;
+  font: bold 1.25rem/1 Poppins, "Helvetica Neue", Arial, sans-serif;
+  border: 2px solid #1d1f20;
+}
+
+.transhot-button-surface .text {
   position: relative;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+  z-index: 2;
+  transition: opacity 140ms ease;
 }
 
+.transhot-button-surface .progress-bar {
+  position: absolute;
+  height: 10px;
+  width: 0;
+  right: 0;
+  top: 50%;
+  left: 0;
+  border-radius: 200px;
+  transform: translateY(-50%);
+  background: #71dfbe;
+  z-index: 1;
+}
 
-.transhot-action:hover {
-  background: rgba(13, 13, 13, 0.9);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
-  transform: translateY(-1px);
-  filter: none;
+.transhot-fancy-button svg {
+  width: 30px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  opacity: 0;
+}
+
+.transhot-fancy-button .check {
+  fill: none;
+  stroke: #1d1f20;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.transhot-fancy-button.is-animating .text {
+  opacity: 0;
+}
+
+.transhot-fancy-button.is-animating .transhot-button-surface {
+  border-radius: 100px;
+}
+
+.transhot-fancy-button.is-animating .progress-bar {
+  width: 100%;
+}
+
+.transhot-fancy-button.is-complete .transhot-button-surface {
+  background: #71dfbe;
+  border-color: #2b2d2f;
+}
+
+.transhot-fancy-button.is-complete svg {
   opacity: 1;
-}
-
-.transhot-action:focus-visible {
-  background: #0d0d0d;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.65);
-  transform: translateY(-1px);
-  filter: none;
-  opacity: 1;
-}
-
-.transhot-action:active {
-  transform: translateY(0);
-  background: rgba(26, 26, 26, 0.9);
-  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
-}
-
-.transhot-action svg {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
-  display: block;
-  shape-rendering: crispEdges;
+  transition: opacity 160ms ease;
 }
