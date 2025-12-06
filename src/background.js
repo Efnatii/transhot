@@ -32,9 +32,6 @@ async function handleRecognition(message) {
 async function resolveApiKey() {
   if (MANUAL_API_KEY) return MANUAL_API_KEY;
 
-  const envFileApiKey = await resolveApiKeyFromEnvFile();
-  if (envFileApiKey) return envFileApiKey;
-
   if (typeof chrome !== "undefined" && chrome.storage?.local?.get) {
     try {
       const stored = await chrome.storage.local.get("visionApiKey");
@@ -42,33 +39,6 @@ async function resolveApiKey() {
     } catch (error) {
       console.warn("Transhot: unable to read API key from storage", error);
     }
-  }
-
-  return "";
-}
-
-async function resolveApiKeyFromEnvFile() {
-  if (typeof process === "undefined" || !process?.env?.GOOGLE_CREDS_PATH) {
-    return "";
-  }
-
-  const credsPath = process.env.GOOGLE_CREDS_PATH;
-  const fs = await import("fs/promises").catch((error) => {
-    console.warn("Transhot: unable to load fs to read GOOGLE_CREDS_PATH", error);
-    return null;
-  });
-
-  if (!fs?.readFile) return "";
-
-  try {
-    const content = await fs.readFile(credsPath, "utf8");
-    const parsed = JSON.parse(content);
-    const apiKey = (parsed.apiKey || parsed.api_key || parsed.key || "").trim();
-    if (apiKey) return apiKey;
-
-    console.warn("Transhot: GOOGLE_CREDS_PATH is set but no API key was found in the file");
-  } catch (error) {
-    console.warn("Transhot: unable to read API key from GOOGLE_CREDS_PATH", error);
   }
 
   return "";
