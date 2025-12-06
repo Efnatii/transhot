@@ -41,6 +41,10 @@
   border: none;
   background: transparent;
   border-radius: 12px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.28),
+    0 4px 0 rgba(0, 0, 0, 0.16),
+    2px 0 0 rgba(0, 0, 0, 0.12),
+    -2px 0 0 rgba(0, 0, 0, 0.12);
   transition: transform 140ms ease;
 }
 
