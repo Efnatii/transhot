@@ -143,6 +143,7 @@ input[type="file"]::-webkit-file-upload-button {
   display: flex;
   align-items: center;
   min-height: 22px;
+  justify-content: center;
 }
 
 .hint,
@@ -156,6 +157,7 @@ input[type="file"]::-webkit-file-upload-button {
 #status {
   opacity: 0;
   transition: opacity 160ms ease;
+  text-align: center;
 }
 
 #status.visible {
