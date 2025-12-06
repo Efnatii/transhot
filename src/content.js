@@ -88,26 +88,52 @@ async function sendForRecognition(target) {
     return { ok: false, error: "Unable to read image bytes" };
   }
 
+  const runtime = getRuntimeForMessaging();
+  if (!runtime) {
+    console.warn("Transhot: runtime messaging is unavailable in this context");
+    return { ok: false, error: "Messaging unavailable" };
+  }
+
   const payload = {
     type: "transhot/recognize",
     imageBase64: arrayBufferToBase64(imageBytes),
     mimeType: getTargetMimeType(target),
   };
 
-  return new Promise((resolve) => {
-    if (typeof chrome === "undefined" || !chrome.runtime?.sendMessage) {
-      console.warn("Transhot: chrome.runtime.sendMessage is unavailable");
-      resolve({ ok: false, error: "Messaging unavailable" });
-      return;
-    }
+  return sendRuntimeMessage(runtime, payload);
+}
 
-    chrome.runtime.sendMessage(payload, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve({ ok: false, error: chrome.runtime.lastError.message });
-        return;
+function getRuntimeForMessaging() {
+  if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+    return chrome.runtime;
+  }
+  if (typeof browser !== "undefined" && browser.runtime?.sendMessage) {
+    return browser.runtime;
+  }
+  return null;
+}
+
+function sendRuntimeMessage(runtime, payload) {
+  return new Promise((resolve) => {
+    try {
+      const maybePromise = runtime.sendMessage(payload, (response) => {
+        if (typeof chrome !== "undefined" && chrome.runtime?.lastError) {
+          resolve({ ok: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response);
+      });
+
+      if (maybePromise?.then) {
+        maybePromise
+          .then((response) => resolve(response))
+          .catch((error) => {
+            resolve({ ok: false, error: error?.message || String(error) });
+          });
       }
-      resolve(response);
-    });
+    } catch (error) {
+      resolve({ ok: false, error: error?.message || String(error) });
+    }
   });
 }
 
