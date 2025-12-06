@@ -27,10 +27,12 @@
 .transhot-action {
   appearance: none;
   border: 2px solid #f5f7ff;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 22px;
   height: 22px;
+  padding: 0;
   border-radius: 1px;
   background: rgba(0, 0, 0, 0.7);
   color: inherit;
@@ -61,6 +63,4 @@
   height: 14px;
   fill: currentColor;
   display: block;
-  justify-self: center;
-  align-self: center;
 }
