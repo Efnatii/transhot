@@ -87,6 +87,72 @@ header h1 {
   gap: 8px;
 }
 
+.toggle-row {
+  gap: 12px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  width: fit-content;
+  user-select: none;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-switch {
+  width: 52px;
+  height: 28px;
+  border: 3px solid #fff;
+  background: #000;
+  border-radius: 20px;
+  box-shadow: 0 0 0 3px #000, 4px 4px 0 #fff;
+  position: relative;
+  transition: all 150ms ease;
+}
+
+.toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border: 3px solid #000;
+  border-radius: 50%;
+  transition: all 150ms ease;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+.toggle input:focus-visible + .toggle-switch {
+  box-shadow: 0 0 0 3px #000, 0 0 0 6px #fff;
+}
+
+.toggle input:checked + .toggle-switch {
+  background: #0f766e;
+  border-color: #c7f9cc;
+  box-shadow: 0 0 0 3px #000, 4px 4px 0 #c7f9cc;
+}
+
+.toggle input:checked + .toggle-switch::after {
+  transform: translateX(22px);
+  background: #000;
+  border-color: #c7f9cc;
+}
+
+.toggle-label {
+  font-weight: 700;
+  color: #fff;
+  text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000;
+}
+
 .file-row {
   gap: 10px;
   align-items: center;
