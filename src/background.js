@@ -16,25 +16,23 @@ async function handlePersistRequest({ hash, data }) {
   const content = JSON.stringify(data, null, 2);
   const url = `data:application/json;charset=utf-8,${encodeURIComponent(content)}`;
 
-  try {
-    const downloadId = await new Promise((resolve, reject) => {
-      chrome.downloads.download(
-        {
-          url,
-          filename: `transhot/${hash}/vision-result.json`,
-          saveAs: false,
-          conflictAction: "overwrite",
-        },
-        (id) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(id);
-          }
+  const downloadId = await new Promise((resolve, reject) => {
+    chrome.downloads.download(
+      {
+        url,
+        filename: `transhot/${hash}/vision-result.json`,
+        saveAs: false,
+        conflictAction: "overwrite",
+      },
+      (id) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(id);
         }
-      );
-    });
+      }
+    );
+  });
 
-    return downloadId;
-  }
+  return downloadId;
 }
