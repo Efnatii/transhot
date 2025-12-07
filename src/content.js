@@ -2,6 +2,7 @@ const OVERLAY_ID = "transhot-hover-overlay";
 const COLLIDERS_ID = "transhot-text-colliders";
 const ACTION_TRANSLATE = "translate";
 const ACTIVE_COLLIDER_CLASS = "active";
+const BLURRED_COLLIDER_CLASS = "blurred";
 
 let overlay;
 let hideTimer;
@@ -146,7 +147,10 @@ function handleMouseOut(event) {
 }
 
 function handleMouseMove(event) {
-  if (!debugMode || !colliderContainer) return;
+  if (!colliderContainer) return;
+
+  const colliders = Array.from(colliderContainer.children);
+  if (colliders.length === 0) return;
 
   const containerRect = colliderContainer.getBoundingClientRect();
   const withinContainer =
@@ -155,25 +159,26 @@ function handleMouseMove(event) {
     event.clientY >= containerRect.top &&
     event.clientY <= containerRect.bottom;
 
-  const colliders = Array.from(colliderContainer.children);
-  if (!withinContainer || colliders.length === 0) {
-    colliders.forEach((collider) => collider.classList.remove(ACTIVE_COLLIDER_CLASS));
-    return;
-  }
+  const hoveredCollider = withinContainer
+    ? colliders.find((collider) => {
+        const rect = collider.getBoundingClientRect();
+        return (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+      })
+    : undefined;
 
-  const hoveredCollider = colliders.find((collider) => {
-    const rect = collider.getBoundingClientRect();
-    return (
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom
-    );
+  colliders.forEach((collider) => {
+    const isHovered = collider === hoveredCollider;
+    collider.classList.toggle(BLURRED_COLLIDER_CLASS, isHovered);
+    collider.classList.toggle(ACTIVE_COLLIDER_CLASS, debugMode && isHovered);
+    if (!debugMode && !isHovered) {
+      collider.classList.remove(ACTIVE_COLLIDER_CLASS);
+    }
   });
-
-  colliders.forEach((collider) =>
-    collider.classList.toggle(ACTIVE_COLLIDER_CLASS, collider === hoveredCollider)
-  );
 }
 
 function showOverlay(element) {

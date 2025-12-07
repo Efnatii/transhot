@@ -132,6 +132,13 @@
   border-radius: 2px;
 }
 
+.transhot-text-collider.blurred {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(14px) contrast(0.8);
+  -webkit-backdrop-filter: blur(14px) contrast(0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
 #transhot-text-colliders.debug-visible .transhot-text-collider {
   outline: 2px solid rgba(255, 0, 0, 0.8);
 }
