@@ -241,6 +241,7 @@ function init() {
 init();
 
 async function beginOverlayForTarget(target) {
+  clearHideTimer();
   currentTarget = target;
   const overlayElement = ensureOverlay();
   if (!overlayFitsTarget(overlayElement, target)) {
