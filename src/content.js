@@ -603,7 +603,8 @@ async function sendToVision(base64Image, credentials) {
   });
 
   if (!response.ok) {
-    throw new Error(`Ответ Vision: ${response.status}`);
+    const details = await describeResponseError(response);
+    throw new Error(`Ответ Vision: ${response.status}${details ? ` (${details})` : ""}`);
   }
 
   return response.json();
@@ -654,7 +655,14 @@ async function sendToTranslation(texts, credentials) {
   });
 
   if (!response.ok) {
-    throw new Error(`Ответ Gemini: ${response.status}`);
+    const details = await describeResponseError(response);
+    const hint =
+      response.status === 403
+        ? " Проверьте, что API-ключ или токен выдан для Gemini и не ограничен (ключи Vision без доступа к Gemini дают 403)."
+        : "";
+    throw new Error(
+      `Ответ Gemini: ${response.status}${details ? ` (${details})` : ""}${hint}`
+    );
   }
 
   const data = await response.json();
@@ -684,6 +692,28 @@ async function sendToTranslation(texts, credentials) {
   }
 
   return normalizeTranslations(textResponse.split(/\r?\n/));
+}
+
+async function describeResponseError(response) {
+  try {
+    const text = await response.text();
+    if (!text) return "";
+
+    try {
+      const json = JSON.parse(text);
+      const error = json.error;
+      if (error?.message) return error.message;
+      if (error?.status) return String(error.status);
+    } catch (parseError) {
+      console.warn("Не удалось распарсить тело ошибки", parseError);
+    }
+
+    const trimmed = text.trim();
+    return trimmed.length > 140 ? `${trimmed.slice(0, 137)}...` : trimmed;
+  } catch (error) {
+    console.warn("Не удалось прочитать тело ответа с ошибкой", error);
+    return "";
+  }
 }
 
 function base64UrlEncode(buffer) {
