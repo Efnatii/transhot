@@ -130,69 +130,13 @@
   box-sizing: border-box;
   pointer-events: none;
   border-radius: 2px;
-  position: absolute;
-  overflow: visible;
-  isolation: isolate;
 }
 
 .transhot-text-collider.blurred {
-  background: transparent;
-}
-
-.transhot-text-collider.blurred::before {
-  content: "";
-  position: absolute;
-  inset: -16px;
-  border-radius: 18px;
-  background: radial-gradient(
-      140% 120% at 15% 20%,
-      rgba(255, 255, 255, 0.32),
-      rgba(255, 255, 255, 0.16) 45%,
-      rgba(255, 255, 255, 0.08) 70%,
-      transparent
-    ),
-    radial-gradient(
-      130% 140% at 80% 70%,
-      rgba(255, 255, 255, 0.28),
-      rgba(255, 255, 255, 0.12) 50%,
-      rgba(255, 255, 255, 0.08) 72%,
-      transparent
-    ),
-    rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(24px) contrast(0.74);
-  -webkit-backdrop-filter: blur(24px) contrast(0.74);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(255, 255, 255, 0.06);
-  clip-path: polygon(
-    3% 12%,
-    18% 4%,
-    34% 8%,
-    50% 2%,
-    64% 10%,
-    82% 6%,
-    96% 18%,
-    94% 40%,
-    100% 56%,
-    96% 76%,
-    88% 94%,
-    68% 98%,
-    52% 92%,
-    34% 100%,
-    18% 92%,
-    6% 82%,
-    0% 64%,
-    4% 44%,
-    0% 26%
-  );
-  mask-image: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, 0.95) calc(100% - 20px),
-    rgba(0, 0, 0, 0) 100%
-  );
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, 0.95) calc(100% - 20px),
-    rgba(0, 0, 0, 0) 100%
-  );
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(14px) contrast(0.8);
+  -webkit-backdrop-filter: blur(14px) contrast(0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 #transhot-text-colliders.debug-visible .transhot-text-collider {
