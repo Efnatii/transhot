@@ -9,9 +9,12 @@ const targetCache = new WeakMap();
 let processedHashes = new Set();
 let cachedAccessToken;
 
-chrome.storage.local.get("transhotProcessedHashes", (result) => {
-  if (Array.isArray(result.transhotProcessedHashes)) {
-    processedHashes = new Set(result.transhotProcessedHashes);
+chrome.storage.local.get(["transhotProcessedHashes", "transhotVisionResults"], (result) => {
+  const storedHashes = Array.isArray(result.transhotProcessedHashes) ? result.transhotProcessedHashes : [];
+  const storedVisionResults = result.transhotVisionResults || {};
+  const combinedHashes = new Set([...storedHashes, ...Object.keys(storedVisionResults)]);
+  if (combinedHashes.size > 0) {
+    processedHashes = combinedHashes;
   }
 });
 
