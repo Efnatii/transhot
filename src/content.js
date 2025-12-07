@@ -628,7 +628,8 @@ async function sendToTranslation(texts, credentials) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
   const headers = { "Content-Type": "application/json" };
-  let url = "https://translation.googleapis.com/language/translate/v2";
+  const model = "gemini-1.5-flash-latest";
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   if (credentials.apiKey) {
     url = `${url}?key=${encodeURIComponent(credentials.apiKey)}`;
@@ -637,21 +638,52 @@ async function sendToTranslation(texts, credentials) {
     headers.Authorization = `Bearer ${token}`;
   }
 
+  const prompt = [
+    "Translate each of the following text segments to Russian.",
+    "Return ONLY a JSON array of translated strings, matching the input order and length.",
+    `Input segments: ${JSON.stringify(texts)}`,
+  ].join("\n");
+
   const response = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ q: texts, target: "ru", format: "text" }),
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { response_mime_type: "application/json" },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Ответ Translation: ${response.status}`);
+    throw new Error(`Ответ Gemini: ${response.status}`);
   }
 
   const data = await response.json();
-  const translations = data?.data?.translations;
-  if (!Array.isArray(translations)) return [];
+  const textResponse = (data?.candidates?.[0]?.content?.parts || [])
+    .map((part) => part?.text || "")
+    .join("")
+    .trim();
 
-  return translations.map((item) => item?.translatedText || "");
+  const normalizeTranslations = (values) => {
+    const arrayValues = Array.isArray(values) ? values : [values];
+    const mapped = arrayValues.map((item) =>
+      typeof item === "string" ? item : String(item ?? "")
+    );
+    while (mapped.length < texts.length) {
+      mapped.push("");
+    }
+    return mapped.slice(0, texts.length);
+  };
+
+  if (!textResponse) return [];
+
+  try {
+    const parsed = JSON.parse(textResponse);
+    return normalizeTranslations(parsed);
+  } catch (error) {
+    console.warn("Не удалось распарсить JSON Gemini, используем построчный разбор", error);
+  }
+
+  return normalizeTranslations(textResponse.split(/\r?\n/));
 }
 
 function base64UrlEncode(buffer) {
@@ -677,7 +709,8 @@ async function createServiceAccountJwt(serviceAccount) {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: serviceAccount.clientEmail,
-    scope: "https://www.googleapis.com/auth/cloud-vision https://www.googleapis.com/auth/cloud-translation",
+    scope:
+      "https://www.googleapis.com/auth/cloud-vision https://www.googleapis.com/auth/generative-language",
     aud: "https://oauth2.googleapis.com/token",
     iat: now,
     exp: now + 3600,
