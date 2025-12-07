@@ -164,6 +164,48 @@ input[type="file"]::-webkit-file-upload-button {
   opacity: 1;
 }
 
+.card-title {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 3px solid #fff;
+  border-radius: 1px;
+  background: #000;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px #000, 4px 4px 0 #fff;
+  text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px #000, 0 0 0 6px #fff;
+}
+
+.btn-danger {
+  background: #2c0a0a;
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 3px #000, 4px 4px 0 #ff4d4f;
+}
+
+.btn-danger:hover {
+  background: #3a0d0d;
+}
+
+.danger-card {
+  border-color: #ff4d4f;
+  box-shadow: 0 0 0 4px #000, 6px 6px 0 #ff4d4f;
+}
+
 ::placeholder {
   color: #e5e7eb;
   text-shadow: -1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000;

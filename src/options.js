@@ -1,6 +1,7 @@
 const fileInput = document.getElementById("creds-file");
 const status = document.getElementById("status");
 const selectedFileLabel = document.getElementById("selected-file");
+const resetStorageButton = document.getElementById("reset-storage");
 let statusTimeout;
 let currentPath = "";
 
@@ -115,7 +116,24 @@ function restorePath() {
   });
 }
 
+function resetStorage() {
+  resetStorageButton.disabled = true;
+  chrome.storage.local.clear(() => {
+    const error = chrome.runtime.lastError;
+    resetStorageButton.disabled = false;
+
+    if (error) {
+      showStatus("Не удалось очистить хранилище");
+      return;
+    }
+
+    setSelectedFile("");
+    showStatus("Данные расширения очищены");
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   fileInput.addEventListener("change", updatePathFromFile);
+  resetStorageButton?.addEventListener("click", resetStorage);
 });
