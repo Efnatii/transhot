@@ -8,7 +8,8 @@ const BLURRED_COLLIDER_CLASS = "blurred";
 let overlay;
 let hideTimer;
 let currentTarget;
-let isProcessing = false;
+let overlayTarget;
+const processingTargets = new WeakSet();
 const targetCache = new WeakMap();
 let processedHashes = new Set();
 let cachedAccessToken;
@@ -141,7 +142,7 @@ function onOverlayClick(event) {
 
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
-    startTranslation();
+    startTranslation(currentTarget);
   }
 }
 
@@ -213,6 +214,7 @@ function scheduleHide() {
   hideTimer = window.setTimeout(() => {
     overlay?.classList.remove("visible");
     currentTarget = undefined;
+    overlayTarget = undefined;
     clearColliders();
     refreshDebugHighlight();
   }, 140);
@@ -297,9 +299,12 @@ async function beginOverlayForTarget(target) {
 
     if (processedHashes.has(snapshot.hash)) {
       overlayElement.classList.remove("visible");
+      overlayTarget = undefined;
       refreshDebugHighlight(target);
       return;
     }
+    overlayTarget = target;
+    applyOverlayLoadingState(target);
     positionOverlay(overlayElement, target);
     showOverlay(overlayElement);
     refreshDebugHighlight(target);
@@ -564,16 +569,16 @@ function updateColliderTooltip(collider) {
   tooltip.style.left = `${Math.min(Math.max(minLeft, preferredLeft), maxLeft)}px`;
 }
 
-async function startTranslation() {
-  if (isProcessing || !currentTarget) return;
-  isProcessing = true;
-  setLoadingState(true);
+async function startTranslation(target) {
+  if (!target || processingTargets.has(target)) return;
+  processingTargets.add(target);
+  setLoadingState(true, target);
 
   try {
-    const targetForColliders = currentTarget;
-    const snapshot = await captureTargetSnapshot(currentTarget);
+    const targetForColliders = target;
+    const snapshot = await captureTargetSnapshot(target);
     if (processedHashes.has(snapshot.hash)) {
-      hideOverlayForProcessed();
+      hideOverlayForProcessed(target);
       return;
     }
 
@@ -600,19 +605,41 @@ async function startTranslation() {
     if (targetForColliders?.isConnected) {
       renderTextColliders(targetForColliders, snapshot.hash);
     }
-    hideOverlayForProcessed();
+    hideOverlayForProcessed(target);
   } catch (error) {
     console.error("Ошибка перевода", error);
-    setLoadingState(false);
+    setLoadingState(false, target);
   } finally {
-    isProcessing = false;
+    processingTargets.delete(target);
   }
 }
 
-function setLoadingState(loading) {
+function setLoadingState(loading, target) {
   const overlayElement = ensureOverlay();
   const loader = overlayElement.querySelector(".transhot-loader");
-  if (loading) {
+
+  const overlayMatchesTarget = !target || overlayTarget === target;
+  if (!overlayMatchesTarget && !processingTargets.has(overlayTarget)) {
+    overlayElement.classList.remove("loading");
+    loader?.classList.add("hidden");
+    return;
+  }
+
+  if (loading && overlayMatchesTarget) {
+    overlayElement.classList.add("loading");
+    loader?.classList.remove("hidden");
+  } else if (overlayMatchesTarget) {
+    overlayElement.classList.remove("loading");
+    loader?.classList.add("hidden");
+  }
+}
+
+function applyOverlayLoadingState(target) {
+  const overlayElement = ensureOverlay();
+  const loader = overlayElement.querySelector(".transhot-loader");
+  const isProcessing = target ? processingTargets.has(target) : false;
+
+  if (isProcessing) {
     overlayElement.classList.add("loading");
     loader?.classList.remove("hidden");
   } else {
@@ -621,11 +648,15 @@ function setLoadingState(loading) {
   }
 }
 
-function hideOverlayForProcessed() {
+function hideOverlayForProcessed(target) {
   const overlayElement = ensureOverlay();
-  overlayElement.classList.remove("visible");
-  setLoadingState(false);
-  currentTarget = undefined;
+  const shouldHideOverlay = !currentTarget || currentTarget === target;
+  if (shouldHideOverlay) {
+    overlayElement.classList.remove("visible");
+    currentTarget = undefined;
+    overlayTarget = undefined;
+  }
+  setLoadingState(false, target);
   refreshDebugHighlight();
 }
 
