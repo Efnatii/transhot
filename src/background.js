@@ -13,10 +13,8 @@ async function handlePersistRequest({ hash, data }) {
     throw new Error("Неверные данные для сохранения результата Vision");
   }
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
+  const content = JSON.stringify(data, null, 2);
+  const url = `data:application/json;charset=utf-8,${encodeURIComponent(content)}`;
 
   try {
     const downloadId = await new Promise((resolve, reject) => {
@@ -38,7 +36,5 @@ async function handlePersistRequest({ hash, data }) {
     });
 
     return downloadId;
-  } finally {
-    URL.revokeObjectURL(url);
   }
 }
