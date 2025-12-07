@@ -1,11 +1,13 @@
 const fileInput = document.getElementById("creds-file");
 const status = document.getElementById("status");
 const selectedFileLabel = document.getElementById("selected-file");
+const debugToggle = document.getElementById("debug-toggle");
 let statusTimeout;
 let currentPath = "";
 
 const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
 const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
+const DEBUG_MODE_KEY = "transhotDebugMode";
 
 function normalizeFilePath(file) {
   if (!file) return "";
@@ -115,7 +117,25 @@ function restorePath() {
   });
 }
 
+function saveDebugMode(event) {
+  const isEnabled = Boolean(event?.target?.checked ?? debugToggle?.checked);
+  chrome.storage.local.set({ [DEBUG_MODE_KEY]: isEnabled }, () => {
+    showStatus(isEnabled ? "Дебаг-режим включён" : "Дебаг-режим выключен");
+  });
+}
+
+function restoreDebugMode() {
+  chrome.storage.local.get(DEBUG_MODE_KEY, (result) => {
+    const saved = Boolean(result[DEBUG_MODE_KEY]);
+    if (debugToggle) {
+      debugToggle.checked = saved;
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
+  restoreDebugMode();
   fileInput.addEventListener("change", updatePathFromFile);
+  debugToggle?.addEventListener("change", saveDebugMode);
 });
