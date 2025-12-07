@@ -79,9 +79,7 @@ function updatePathFromFile() {
 function setSelectedFile(path) {
   currentPath = (path ?? "").trim();
   selectedFileLabel.dataset.fullPath = currentPath;
-  selectedFileLabel.textContent = currentPath
-    ? deriveFileName(currentPath)
-    : "Файл не выбран";
+  selectedFileLabel.textContent = currentPath || "Файл не выбран";
 }
 
 function savePath(message = "Путь сохранён автоматически", storedValue) {
