@@ -1,4 +1,5 @@
 const OVERLAY_ID = "transhot-hover-overlay";
+const COLLIDERS_ID = "transhot-text-colliders";
 const ACTION_TRANSLATE = "translate";
 
 let overlay;
@@ -8,13 +9,36 @@ let isProcessing = false;
 const targetCache = new WeakMap();
 let processedHashes = new Set();
 let cachedAccessToken;
+let visionResults = {};
+let debugMode = false;
+let colliderContainer;
+let colliderTarget;
 
-chrome.storage.local.get(["transhotProcessedHashes", "transhotVisionResults"], (result) => {
+chrome.storage.local.get(["transhotProcessedHashes", "transhotVisionResults", "transhotDebugMode"], (result) => {
   const storedHashes = Array.isArray(result.transhotProcessedHashes) ? result.transhotProcessedHashes : [];
   const storedVisionResults = result.transhotVisionResults || {};
   const combinedHashes = new Set([...storedHashes, ...Object.keys(storedVisionResults)]);
   if (combinedHashes.size > 0) {
     processedHashes = combinedHashes;
+  }
+  visionResults = storedVisionResults;
+  setDebugMode(Boolean(result.transhotDebugMode));
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") return;
+
+  if (changes.transhotProcessedHashes) {
+    const nextValue = changes.transhotProcessedHashes.newValue;
+    processedHashes = new Set(Array.isArray(nextValue) ? nextValue : []);
+  }
+
+  if (changes.transhotVisionResults) {
+    visionResults = changes.transhotVisionResults.newValue || {};
+  }
+
+  if (changes.transhotDebugMode) {
+    setDebugMode(Boolean(changes.transhotDebugMode.newValue));
   }
 });
 
@@ -45,6 +69,40 @@ function ensureOverlay() {
   return overlay;
 }
 
+function ensureColliderContainer() {
+  if (colliderContainer) return colliderContainer;
+
+  const container = document.createElement("div");
+  container.id = COLLIDERS_ID;
+  container.className = "transhot-text-colliders";
+  container.style.position = "absolute";
+  container.style.pointerEvents = "none";
+  container.style.zIndex = "2147483646";
+
+  document.documentElement.appendChild(container);
+  colliderContainer = container;
+  applyDebugModeToContainer();
+  return container;
+}
+
+function setDebugMode(enabled) {
+  debugMode = enabled;
+  applyDebugModeToContainer();
+}
+
+function applyDebugModeToContainer() {
+  if (!colliderContainer) return;
+  colliderContainer.classList.toggle("debug-visible", debugMode);
+}
+
+function clearColliders() {
+  colliderTarget = undefined;
+  if (!colliderContainer) return;
+  colliderContainer.innerHTML = "";
+  colliderContainer.remove();
+  colliderContainer = undefined;
+}
+
 function onOverlayClick(event) {
   const button = event.target.closest(".transhot-action");
   if (!button) return;
@@ -63,14 +121,15 @@ function handleMouseOver(event) {
 }
 
 function handleMouseOut(event) {
-  if (!currentTarget) return;
+  const activeTarget = currentTarget || colliderTarget;
+  if (!activeTarget) return;
   if (overlay && overlay.contains(event.relatedTarget)) return;
 
-  const leavingSameTarget = event.target === currentTarget && event.relatedTarget === currentTarget;
+  const leavingSameTarget = event.target === activeTarget && event.relatedTarget === activeTarget;
   if (leavingSameTarget) return;
 
   const relatedImage = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest("img, video");
-  if (relatedImage === currentTarget) return;
+  if (relatedImage === activeTarget) return;
 
   scheduleHide();
 }
@@ -85,6 +144,7 @@ function scheduleHide() {
   hideTimer = window.setTimeout(() => {
     overlay?.classList.remove("visible");
     currentTarget = undefined;
+    clearColliders();
   }, 140);
 }
 
@@ -93,6 +153,26 @@ function clearHideTimer() {
     clearTimeout(hideTimer);
     hideTimer = undefined;
   }
+}
+
+function getTargetNaturalSize(target) {
+  if (!target) return null;
+
+  if (target instanceof HTMLImageElement) {
+    return {
+      width: target.naturalWidth || target.width || target.clientWidth,
+      height: target.naturalHeight || target.height || target.clientHeight,
+    };
+  }
+
+  if (target instanceof HTMLVideoElement) {
+    return {
+      width: target.videoWidth || target.clientWidth,
+      height: target.videoHeight || target.clientHeight,
+    };
+  }
+
+  return null;
 }
 
 function positionOverlay(element, target) {
@@ -133,14 +213,24 @@ async function beginOverlayForTarget(target) {
   if (!overlayFitsTarget(overlayElement, target)) {
     overlayElement.classList.remove("visible");
     currentTarget = undefined;
+    clearColliders();
     return;
   }
 
   try {
     const snapshot = await captureTargetSnapshot(target);
+    if (colliderTarget && colliderTarget !== target) {
+      clearColliders();
+    }
+
+    if (visionResults[snapshot.hash]) {
+      renderTextColliders(target, snapshot.hash);
+    } else {
+      clearColliders();
+    }
+
     if (processedHashes.has(snapshot.hash)) {
       overlayElement.classList.remove("visible");
-      currentTarget = undefined;
       return;
     }
     positionOverlay(overlayElement, target);
@@ -205,12 +295,113 @@ function bufferToBase64(buffer) {
   return btoa(binary);
 }
 
+function extractVertices(source, naturalSize) {
+  if (!source) return [];
+
+  if (Array.isArray(source.vertices) && source.vertices.length > 0) {
+    return source.vertices.map((vertex) => ({
+      x: typeof vertex.x === "number" ? vertex.x : 0,
+      y: typeof vertex.y === "number" ? vertex.y : 0,
+    }));
+  }
+
+  if (Array.isArray(source.normalizedVertices) && source.normalizedVertices.length > 0 && naturalSize) {
+    return source.normalizedVertices.map((vertex) => ({
+      x: Math.round((vertex.x ?? 0) * naturalSize.width),
+      y: Math.round((vertex.y ?? 0) * naturalSize.height),
+    }));
+  }
+
+  return [];
+}
+
+function toBoundingRect(vertices) {
+  if (!Array.isArray(vertices) || vertices.length === 0) return null;
+
+  const xs = vertices.map((vertex) => vertex.x ?? 0);
+  const ys = vertices.map((vertex) => vertex.y ?? 0);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  if (width <= 0 || height <= 0) return null;
+
+  return { left: minX, top: minY, width, height };
+}
+
+function collectTextBlockBounds(visionResponse, naturalSize) {
+  const responses = visionResponse?.responses;
+  if (!Array.isArray(responses) || responses.length === 0) return [];
+
+  const [firstResponse] = responses;
+  const pages = firstResponse?.fullTextAnnotation?.pages;
+  if (!Array.isArray(pages)) return [];
+
+  const bounds = [];
+  pages.forEach((page) => {
+    page?.blocks?.forEach((block) => {
+      const vertices = extractVertices(block?.boundingBox || block?.boundingPoly, naturalSize);
+      const rect = toBoundingRect(vertices);
+      if (rect) {
+        bounds.push(rect);
+      }
+    });
+  });
+
+  return bounds;
+}
+
+function renderTextColliders(target, hash) {
+  const naturalSize = getTargetNaturalSize(target);
+  if (!naturalSize || !naturalSize.width || !naturalSize.height) return;
+
+  const visionResponse = visionResults[hash];
+  if (!visionResponse) {
+    clearColliders();
+    return;
+  }
+
+  const bounds = collectTextBlockBounds(visionResponse, naturalSize);
+  if (bounds.length === 0) {
+    clearColliders();
+    return;
+  }
+
+  const rect = target.getBoundingClientRect();
+  const scaleX = rect.width / naturalSize.width;
+  const scaleY = rect.height / naturalSize.height;
+  const container = ensureColliderContainer();
+
+  colliderTarget = target;
+  container.innerHTML = "";
+  container.style.width = `${rect.width}px`;
+  container.style.height = `${rect.height}px`;
+  container.style.left = `${window.scrollX + rect.left}px`;
+  container.style.top = `${window.scrollY + rect.top}px`;
+
+  bounds.forEach((bound) => {
+    const collider = document.createElement("div");
+    collider.className = "transhot-text-collider";
+    collider.style.position = "absolute";
+    collider.style.left = `${bound.left * scaleX}px`;
+    collider.style.top = `${bound.top * scaleY}px`;
+    collider.style.width = `${bound.width * scaleX}px`;
+    collider.style.height = `${bound.height * scaleY}px`;
+    container.appendChild(collider);
+  });
+}
+
 async function startTranslation() {
   if (isProcessing || !currentTarget) return;
   isProcessing = true;
   setLoadingState(true);
 
   try {
+    const targetForColliders = currentTarget;
     const snapshot = await captureTargetSnapshot(currentTarget);
     if (processedHashes.has(snapshot.hash)) {
       hideOverlayForProcessed();
@@ -219,11 +410,15 @@ async function startTranslation() {
 
     const credentials = await loadVisionCredentials();
     const visionResponse = await sendToVision(snapshot.base64, credentials);
+    visionResults = { ...visionResults, [snapshot.hash]: visionResponse };
     const persistResponse = await persistResultInBackground(snapshot.hash, visionResponse);
     if (!persistResponse.success) {
       throw new Error(persistResponse.error || "Не удалось сохранить результат Vision");
     }
     markHashProcessed(snapshot.hash);
+    if (targetForColliders?.isConnected) {
+      renderTextColliders(targetForColliders, snapshot.hash);
+    }
     hideOverlayForProcessed();
   } catch (error) {
     console.error("Ошибка перевода", error);
