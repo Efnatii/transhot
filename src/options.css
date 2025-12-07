@@ -159,8 +159,8 @@ header h1 {
 
 .file-row {
   gap: 10px;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .field-label {
@@ -208,7 +208,7 @@ input[type="file"]::-webkit-file-upload-button {
 
 #selected-file {
   margin: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .status-row {
