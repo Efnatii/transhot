@@ -122,6 +122,20 @@
   animation: pixel-pulse 820ms steps(4, end) infinite;
 }
 
+#transhot-text-colliders {
+  box-sizing: border-box;
+}
+
+.transhot-text-collider {
+  box-sizing: border-box;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+#transhot-text-colliders.debug-visible .transhot-text-collider {
+  outline: 2px solid rgba(255, 0, 0, 0.8);
+}
+
 @keyframes pixel-pulse {
   0% {
     clip-path: polygon(0 0, 40% 0, 40% 20%, 60% 20%, 60% 40%, 80% 40%, 80% 60%, 60% 60%, 60% 80%, 40% 80%, 40% 60%, 20% 60%, 20% 40%, 0 40%);
