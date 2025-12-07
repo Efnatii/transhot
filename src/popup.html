@@ -10,11 +10,12 @@
     <main class="options popup-panel">
       <header>
         <h1>Transhot</h1>
-        <p class="subtitle">Укажите путь к JSON с учетными данными Vision.</p>
       </header>
 
       <section class="card compact">
         <div class="card-row file-row">
+          <label class="field-label" for="creds-file">Учетные данные Vision</label>
+          <p class="hint">Укажите путь к JSON с учетными данными Vision.</p>
           <input id="creds-file" type="file" accept="application/json" />
           <p id="selected-file" class="field-label" role="status" aria-live="polite">
             Файл не выбран

@@ -151,8 +151,8 @@
 }
 
 .transhot-debug-target {
-  outline: 3px solid rgba(255, 0, 0, 0.8);
-  outline-offset: 3px;
+  outline: 1px solid #22c55e;
+  outline-offset: 2px;
   border-radius: 6px;
 }
 
