@@ -4,6 +4,15 @@ const ACTION_TRANSLATE = "translate";
 let overlay;
 let hideTimer;
 let currentTarget;
+let isProcessing = false;
+const targetCache = new WeakMap();
+let processedHashes = new Set();
+
+chrome.storage.local.get("transhotProcessedHashes", (result) => {
+  if (Array.isArray(result.transhotProcessedHashes)) {
+    processedHashes = new Set(result.transhotProcessedHashes);
+  }
+});
 
 function ensureOverlay() {
   if (overlay) return overlay;
@@ -19,6 +28,9 @@ function ensureOverlay() {
         <path d="M6.5 16.5h4V19h-4z" />
       </svg>
     </button>
+    <div class="transhot-loader hidden" aria-live="polite" aria-label="Выполняется перевод">
+      <div class="pixel-spinner"><div class="pixel-core"></div></div>
+    </div>
   `;
 
   overlay.addEventListener("mouseenter", clearHideTimer);
@@ -35,7 +47,7 @@ function onOverlayClick(event) {
 
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
-    return;
+    startTranslation();
   }
 }
 
@@ -43,15 +55,7 @@ function handleMouseOver(event) {
   const target = event.target.closest("img, video");
   if (!target) return;
 
-  currentTarget = target;
-  const overlayElement = ensureOverlay();
-  if (!overlayFitsTarget(overlayElement, target)) {
-    overlayElement.classList.remove("visible");
-    currentTarget = undefined;
-    return;
-  }
-  positionOverlay(overlayElement, target);
-  showOverlay(overlayElement);
+  beginOverlayForTarget(target);
 }
 
 function handleMouseOut(event) {
@@ -118,3 +122,201 @@ function init() {
 }
 
 init();
+
+async function beginOverlayForTarget(target) {
+  currentTarget = target;
+  const overlayElement = ensureOverlay();
+  if (!overlayFitsTarget(overlayElement, target)) {
+    overlayElement.classList.remove("visible");
+    currentTarget = undefined;
+    return;
+  }
+
+  try {
+    const snapshot = await captureTargetSnapshot(target);
+    if (processedHashes.has(snapshot.hash)) {
+      overlayElement.classList.remove("visible");
+      currentTarget = undefined;
+      return;
+    }
+    positionOverlay(overlayElement, target);
+    showOverlay(overlayElement);
+  } catch (error) {
+    console.warn("Не удалось подготовить оверлей", error);
+  }
+}
+
+async function captureTargetSnapshot(target) {
+  const cached = targetCache.get(target);
+  if (cached) return cached;
+
+  const blob = await extractBlobFromTarget(target);
+  const arrayBuffer = await blob.arrayBuffer();
+  const hash = await digestBuffer(arrayBuffer);
+  const base64 = bufferToBase64(arrayBuffer);
+  const snapshot = { hash, base64 };
+  targetCache.set(target, snapshot);
+  return snapshot;
+}
+
+async function extractBlobFromTarget(target) {
+  if (target instanceof HTMLImageElement) {
+    const src = target.currentSrc || target.src;
+    const response = await fetch(src, { mode: "cors" });
+    return response.blob();
+  }
+
+  if (target instanceof HTMLVideoElement) {
+    const canvas = document.createElement("canvas");
+    canvas.width = target.videoWidth;
+    canvas.height = target.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx?.drawImage(target, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Не удалось сохранить кадр видео"));
+        }
+      }, "image/png");
+    });
+  }
+
+  throw new Error("Неподдерживаемый тип элемента для перевода");
+}
+
+async function digestBuffer(buffer) {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function bufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function startTranslation() {
+  if (isProcessing || !currentTarget) return;
+  isProcessing = true;
+  setLoadingState(true);
+
+  try {
+    const snapshot = await captureTargetSnapshot(currentTarget);
+    if (processedHashes.has(snapshot.hash)) {
+      hideOverlayForProcessed();
+      return;
+    }
+
+    const credentials = await loadVisionCredentials();
+    const visionResponse = await sendToVision(snapshot.base64, credentials);
+    await persistResult(snapshot.hash, visionResponse);
+    markHashProcessed(snapshot.hash);
+    hideOverlayForProcessed();
+  } catch (error) {
+    console.error("Ошибка перевода", error);
+    setLoadingState(false);
+  } finally {
+    isProcessing = false;
+  }
+}
+
+function setLoadingState(loading) {
+  const overlayElement = ensureOverlay();
+  const loader = overlayElement.querySelector(".transhot-loader");
+  if (loading) {
+    overlayElement.classList.add("loading");
+    loader?.classList.remove("hidden");
+  } else {
+    overlayElement.classList.remove("loading");
+    loader?.classList.add("hidden");
+  }
+}
+
+function hideOverlayForProcessed() {
+  const overlayElement = ensureOverlay();
+  overlayElement.classList.remove("visible");
+  setLoadingState(false);
+  currentTarget = undefined;
+}
+
+function markHashProcessed(hash) {
+  processedHashes.add(hash);
+  chrome.storage.local.set({ transhotProcessedHashes: Array.from(processedHashes) });
+}
+
+async function loadVisionCredentials() {
+  const result = await chrome.storage.local.get("googleVisionCredsPath");
+  const path = result.googleVisionCredsPath;
+  if (!path) {
+    throw new Error("Путь к JSON с учетными данными Vision не указан");
+  }
+
+  const response = await fetch(path);
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить файл с учетными данными Vision");
+  }
+
+  const creds = await response.json();
+  const apiKey = creds.apiKey || creds.key;
+  if (!apiKey) {
+    throw new Error("В JSON не найден apiKey");
+  }
+  return { apiKey };
+}
+
+async function sendToVision(base64Image, credentials) {
+  const body = {
+    requests: [
+      {
+        image: { content: base64Image },
+        features: [{ type: "TEXT_DETECTION" }],
+      },
+    ],
+  };
+
+  const response = await fetch(
+    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(credentials.apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Ответ Vision: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function persistResult(hash, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  await new Promise((resolve, reject) => {
+    chrome.downloads.download(
+      {
+        url,
+        filename: `transhot/${hash}/vision-result.json`,
+        saveAs: false,
+        conflictAction: "overwrite",
+      },
+      (downloadId) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(downloadId);
+        }
+        URL.revokeObjectURL(url);
+      }
+    );
+  });
+}
