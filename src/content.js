@@ -1,5 +1,6 @@
 const OVERLAY_ID = "transhot-hover-overlay";
 const COLLIDERS_ID = "transhot-text-colliders";
+const DEBUG_TARGET_CLASS = "transhot-debug-target";
 const ACTION_TRANSLATE = "translate";
 const ACTIVE_COLLIDER_CLASS = "active";
 const BLURRED_COLLIDER_CLASS = "blurred";
@@ -17,6 +18,7 @@ let debugMode = false;
 let colliderContainer;
 let colliderTarget;
 let colliderTooltip;
+let debugHighlightedTarget;
 
 chrome.storage.local.get(
   ["transhotProcessedHashes", "transhotVisionResults", "transhotTranslationResults", "transhotDebugMode"],
@@ -101,11 +103,26 @@ function ensureColliderContainer() {
 function setDebugMode(enabled) {
   debugMode = enabled;
   applyDebugModeToContainer();
+  refreshDebugHighlight();
 }
 
 function applyDebugModeToContainer() {
   if (!colliderContainer) return;
   colliderContainer.classList.toggle("debug-visible", debugMode);
+}
+
+function refreshDebugHighlight(preferredTarget) {
+  const nextTarget = debugMode ? preferredTarget ?? currentTarget ?? colliderTarget : undefined;
+
+  if (debugHighlightedTarget && debugHighlightedTarget !== nextTarget) {
+    debugHighlightedTarget.classList.remove(DEBUG_TARGET_CLASS);
+  }
+
+  if (nextTarget) {
+    nextTarget.classList.add(DEBUG_TARGET_CLASS);
+  }
+
+  debugHighlightedTarget = nextTarget;
 }
 
 function clearColliders() {
@@ -115,6 +132,7 @@ function clearColliders() {
   colliderContainer.remove();
   colliderContainer = undefined;
   removeColliderTooltip();
+  refreshDebugHighlight();
 }
 
 function onOverlayClick(event) {
@@ -196,6 +214,7 @@ function scheduleHide() {
     overlay?.classList.remove("visible");
     currentTarget = undefined;
     clearColliders();
+    refreshDebugHighlight();
   }, 140);
 }
 
@@ -260,6 +279,7 @@ async function beginOverlayForTarget(target) {
     overlayElement.classList.remove("visible");
     currentTarget = undefined;
     clearColliders();
+    refreshDebugHighlight();
     return;
   }
 
@@ -277,10 +297,12 @@ async function beginOverlayForTarget(target) {
 
     if (processedHashes.has(snapshot.hash)) {
       overlayElement.classList.remove("visible");
+      refreshDebugHighlight(target);
       return;
     }
     positionOverlay(overlayElement, target);
     showOverlay(overlayElement);
+    refreshDebugHighlight(target);
   } catch (error) {
     console.warn("Не удалось подготовить оверлей", error);
   }
@@ -484,6 +506,7 @@ function renderTextColliders(target, hash) {
 
     container.appendChild(collider);
   });
+  refreshDebugHighlight(target);
 }
 
 function ensureColliderTooltip() {
@@ -603,6 +626,7 @@ function hideOverlayForProcessed() {
   overlayElement.classList.remove("visible");
   setLoadingState(false);
   currentTarget = undefined;
+  refreshDebugHighlight();
 }
 
 function markHashProcessed(hash) {
