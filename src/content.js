@@ -412,7 +412,10 @@ function collectTextBlocks(visionResponse) {
     page?.blocks?.forEach((block) => {
       const text = extractTextFromBlock(block);
       if (text) {
-        blocks.push(text);
+        blocks.push({
+          text,
+          boundingPoly: block?.boundingPoly || block?.boundingBox || null,
+        });
       }
     });
   });
@@ -609,10 +612,15 @@ async function sendToVision(base64Image, credentials) {
 async function translateBlocks(blockTexts, credentials) {
   if (!Array.isArray(blockTexts) || blockTexts.length === 0) return [];
 
-  const translatedTexts = await sendToTranslation(blockTexts, credentials);
-  return blockTexts.map((originalText, index) => ({
-    originalText,
+  const translatedTexts = await sendToTranslation(
+    blockTexts.map((item) => item.text),
+    credentials
+  );
+
+  return blockTexts.map((block, index) => ({
+    originalText: block.text,
     translatedText: translatedTexts[index] || "",
+    boundingPoly: block.boundingPoly,
   }));
 }
 
