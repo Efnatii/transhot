@@ -16,6 +16,7 @@ let translationResults = {};
 let debugMode = false;
 let colliderContainer;
 let colliderTarget;
+let colliderTooltip;
 
 chrome.storage.local.get(
   ["transhotProcessedHashes", "transhotVisionResults", "transhotTranslationResults", "transhotDebugMode"],
@@ -113,6 +114,7 @@ function clearColliders() {
   colliderContainer.innerHTML = "";
   colliderContainer.remove();
   colliderContainer = undefined;
+  removeColliderTooltip();
 }
 
 function onOverlayClick(event) {
@@ -179,6 +181,8 @@ function handleMouseMove(event) {
       collider.classList.remove(ACTIVE_COLLIDER_CLASS);
     }
   });
+
+  updateColliderTooltip(hoveredCollider);
 }
 
 function showOverlay(element) {
@@ -469,6 +473,8 @@ function renderTextColliders(target, hash) {
     return;
   }
 
+  const translations = translationResults[hash];
+
   const rect = target.getBoundingClientRect();
   const scaleX = rect.width / naturalSize.width;
   const scaleY = rect.height / naturalSize.height;
@@ -481,7 +487,7 @@ function renderTextColliders(target, hash) {
   container.style.left = `${window.scrollX + rect.left}px`;
   container.style.top = `${window.scrollY + rect.top}px`;
 
-  bounds.forEach((bound) => {
+  bounds.forEach((bound, index) => {
     const collider = document.createElement("div");
     collider.className = "transhot-text-collider";
     collider.style.position = "absolute";
@@ -489,8 +495,74 @@ function renderTextColliders(target, hash) {
     collider.style.top = `${bound.top * scaleY}px`;
     collider.style.width = `${bound.width * scaleX}px`;
     collider.style.height = `${bound.height * scaleY}px`;
+
+    const translationEntry = Array.isArray(translations)
+      ? translations[index]
+      : undefined;
+    const translatedText = typeof translationEntry === "string"
+      ? translationEntry
+      : translationEntry?.translatedText;
+    if (translatedText) {
+      collider.dataset.translation = translatedText.trim();
+    }
+
     container.appendChild(collider);
   });
+}
+
+function ensureColliderTooltip() {
+  if (colliderTooltip) return colliderTooltip;
+
+  const tooltip = document.createElement("div");
+  tooltip.className = "transhot-collider-tooltip";
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.style.position = "absolute";
+  tooltip.style.pointerEvents = "none";
+  tooltip.style.zIndex = "2147483647";
+
+  document.documentElement.appendChild(tooltip);
+  colliderTooltip = tooltip;
+  return tooltip;
+}
+
+function removeColliderTooltip() {
+  if (!colliderTooltip) return;
+  colliderTooltip.remove();
+  colliderTooltip = undefined;
+}
+
+function hideColliderTooltip() {
+  if (!colliderTooltip) return;
+  colliderTooltip.classList.remove("visible");
+  colliderTooltip.textContent = "";
+}
+
+function updateColliderTooltip(collider) {
+  if (!collider || !collider.dataset.translation) {
+    hideColliderTooltip();
+    return;
+  }
+
+  const tooltip = ensureColliderTooltip();
+  tooltip.textContent = collider.dataset.translation;
+  tooltip.classList.add("visible");
+
+  const colliderRect = collider.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const pageX = window.scrollX + colliderRect.left;
+  const pageY = window.scrollY + colliderRect.top;
+
+  let top = pageY - tooltipRect.height - 10;
+  if (top < window.scrollY + 6) {
+    top = window.scrollY + colliderRect.bottom + 10;
+  }
+
+  const preferredLeft = pageX + (colliderRect.width - tooltipRect.width) / 2;
+  const minLeft = window.scrollX + 8;
+  const maxLeft = window.scrollX + window.innerWidth - tooltipRect.width - 8;
+
+  tooltip.style.top = `${top}px`;
+  tooltip.style.left = `${Math.min(Math.max(minLeft, preferredLeft), maxLeft)}px`;
 }
 
 async function startTranslation() {
