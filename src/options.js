@@ -7,6 +7,18 @@ let currentPath = "";
 const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
 const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
 
+function normalizeFilePath(file) {
+  if (!file) return "";
+
+  const rawPath =
+    file.path ||
+    file.webkitRelativePath ||
+    (fileInput.value ? fileInput.value.trim() : "") ||
+    file.name;
+
+  return (rawPath || "").trim();
+}
+
 function extractApiKey(json) {
   const apiKey = json.apiKey || json.key;
   if (!apiKey || typeof apiKey !== "string") {
@@ -35,22 +47,19 @@ function updatePathFromFile() {
   const file = fileInput.files?.[0];
   if (!file) return;
 
-  const filePath =
-    file.path ||
-    file.webkitRelativePath ||
-    fileInput.value ||
-    file.name;
-  setSelectedFile(filePath);
+  const filePath = normalizeFilePath(file);
+  setSelectedFile(filePath || file.name);
 
   file
     .text()
     .then((text) => {
       const parsed = JSON.parse(text);
       const apiKey = extractApiKey(parsed);
+      const safePath = filePath || file.name;
       chrome.storage.local.set(
         {
-          [CREDENTIALS_PATH_KEY]: filePath,
-          [CREDENTIALS_STORAGE_KEY]: { apiKey, fileName: deriveFileName(filePath, file.name) },
+          [CREDENTIALS_PATH_KEY]: safePath,
+          [CREDENTIALS_STORAGE_KEY]: { apiKey, fileName: deriveFileName(safePath, file.name) },
         },
         () => {
           showStatus("Файл распознан и ключ сохранён");
