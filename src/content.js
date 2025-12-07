@@ -629,7 +629,7 @@ async function sendToTranslation(texts, credentials) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
   const headers = { "Content-Type": "application/json" };
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.5-flash";
   let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   if (credentials.apiKey) {
