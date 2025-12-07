@@ -391,7 +391,6 @@ function renderTextColliders(target, hash) {
     collider.style.top = `${bound.top * scaleY}px`;
     collider.style.width = `${bound.width * scaleX}px`;
     collider.style.height = `${bound.height * scaleY}px`;
-    collider.tabIndex = 0;
     container.appendChild(collider);
   });
 }
