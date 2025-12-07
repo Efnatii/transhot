@@ -150,6 +150,12 @@
   outline-color: rgba(0, 160, 0, 0.9);
 }
 
+.transhot-debug-target {
+  outline: 3px solid rgba(255, 0, 0, 0.8);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .transhot-collider-tooltip {
   position: absolute;
   max-width: 320px;
