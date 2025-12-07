@@ -8,7 +8,7 @@ const BLURRED_COLLIDER_CLASS = "blurred";
 let overlay;
 let hideTimer;
 let currentTarget;
-let isProcessing = false;
+const processingTargets = new WeakSet();
 const targetCache = new WeakMap();
 let processedHashes = new Set();
 let cachedAccessToken;
@@ -141,7 +141,7 @@ function onOverlayClick(event) {
 
   const action = button.dataset.action;
   if (action === ACTION_TRANSLATE) {
-    startTranslation();
+    startTranslation(currentTarget);
   }
 }
 
@@ -564,16 +564,16 @@ function updateColliderTooltip(collider) {
   tooltip.style.left = `${Math.min(Math.max(minLeft, preferredLeft), maxLeft)}px`;
 }
 
-async function startTranslation() {
-  if (isProcessing || !currentTarget) return;
-  isProcessing = true;
-  setLoadingState(true);
+async function startTranslation(target) {
+  if (!target || processingTargets.has(target)) return;
+  processingTargets.add(target);
+  setLoadingState(true, target);
 
   try {
-    const targetForColliders = currentTarget;
-    const snapshot = await captureTargetSnapshot(currentTarget);
+    const targetForColliders = target;
+    const snapshot = await captureTargetSnapshot(target);
     if (processedHashes.has(snapshot.hash)) {
-      hideOverlayForProcessed();
+      hideOverlayForProcessed(target);
       return;
     }
 
@@ -600,16 +600,20 @@ async function startTranslation() {
     if (targetForColliders?.isConnected) {
       renderTextColliders(targetForColliders, snapshot.hash);
     }
-    hideOverlayForProcessed();
+    hideOverlayForProcessed(target);
   } catch (error) {
     console.error("Ошибка перевода", error);
-    setLoadingState(false);
+    setLoadingState(false, target);
   } finally {
-    isProcessing = false;
+    processingTargets.delete(target);
   }
 }
 
-function setLoadingState(loading) {
+function setLoadingState(loading, target) {
+  if (target && currentTarget && target !== currentTarget) {
+    return;
+  }
+
   const overlayElement = ensureOverlay();
   const loader = overlayElement.querySelector(".transhot-loader");
   if (loading) {
@@ -621,11 +625,14 @@ function setLoadingState(loading) {
   }
 }
 
-function hideOverlayForProcessed() {
+function hideOverlayForProcessed(target) {
   const overlayElement = ensureOverlay();
-  overlayElement.classList.remove("visible");
-  setLoadingState(false);
-  currentTarget = undefined;
+  const shouldHideOverlay = !currentTarget || currentTarget === target;
+  if (shouldHideOverlay) {
+    overlayElement.classList.remove("visible");
+    currentTarget = undefined;
+  }
+  setLoadingState(false, target);
   refreshDebugHighlight();
 }
 
