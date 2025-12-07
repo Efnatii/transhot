@@ -128,7 +128,7 @@ function onOverlayClick(event) {
 }
 
 function handleMouseOver(event) {
-  const target = event.target.closest("img, video");
+  const target = event.target.closest("img");
   if (!target) return;
 
   beginOverlayForTarget(target);
@@ -142,7 +142,7 @@ function handleMouseOut(event) {
   const leavingSameTarget = event.target === activeTarget && event.relatedTarget === activeTarget;
   if (leavingSameTarget) return;
 
-  const relatedImage = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest("img, video");
+  const relatedImage = event.relatedTarget && event.relatedTarget.closest && event.relatedTarget.closest("img");
   if (relatedImage === activeTarget) return;
 
   scheduleHide();
@@ -213,13 +213,6 @@ function getTargetNaturalSize(target) {
     return {
       width: target.naturalWidth || target.width || target.clientWidth,
       height: target.naturalHeight || target.height || target.clientHeight,
-    };
-  }
-
-  if (target instanceof HTMLVideoElement) {
-    return {
-      width: target.videoWidth || target.clientWidth,
-      height: target.videoHeight || target.clientHeight,
     };
   }
 
@@ -311,23 +304,6 @@ async function extractBlobFromTarget(target) {
     const src = target.currentSrc || target.src;
     const response = await fetch(src, { mode: "cors" });
     return response.blob();
-  }
-
-  if (target instanceof HTMLVideoElement) {
-    const canvas = document.createElement("canvas");
-    canvas.width = target.videoWidth;
-    canvas.height = target.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx?.drawImage(target, 0, 0, canvas.width, canvas.height);
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error("Не удалось сохранить кадр видео"));
-        }
-      }, "image/png");
-    });
   }
 
   throw new Error("Неподдерживаемый тип элемента для перевода");
