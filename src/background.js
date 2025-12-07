@@ -20,7 +20,7 @@ async function handlePersistRequest({ hash, data }) {
     chrome.downloads.download(
       {
         url,
-        filename: `transhot/cache/${hash}/vision-result.json`,
+        filename: `transhot/${hash}/vision-result.json`,
         saveAs: false,
         conflictAction: "overwrite",
       },
