@@ -3,8 +3,11 @@ const status = document.getElementById("status");
 const selectedFileLabel = document.getElementById("selected-file");
 const debugToggle = document.getElementById("debug-toggle");
 const chatgptKeyInput = document.getElementById("chatgpt-key");
+const translateAllButton = document.getElementById("translate-all");
+const bulkStatus = document.getElementById("bulk-status");
 let statusTimeout;
 let currentPath = "";
+let bulkRequestId = null;
 
 const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
 const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
@@ -143,6 +146,69 @@ function saveChatgptKey(event) {
   });
 }
 
+function updateBulkStatus(text) {
+  if (!bulkStatus) return;
+  bulkStatus.textContent = text;
+}
+
+function handleBulkProgress(message) {
+  if (!translateAllButton || message.requestId !== bulkRequestId) return;
+
+  const { total = 0, completed = 0, skipped = 0, failed = 0 } = message;
+  if (message.state === "complete") {
+    translateAllButton.disabled = false;
+    bulkRequestId = null;
+    updateBulkStatus(
+      total === 0
+        ? "Нет подходящих изображений для перевода"
+        : `Готово: ${completed}/${total}, пропущено ${skipped}${failed ? `, ошибок: ${failed}` : ""}`
+    );
+    return;
+  }
+
+  const action =
+    message.state === "discovering"
+      ? "Поиск изображений"
+      : message.state === "translating"
+        ? "Перевод изображений"
+        : "Обработка";
+
+  updateBulkStatus(`${action}: ${completed}/${total}${skipped ? `, пропущено ${skipped}` : ""}`);
+}
+
+function requestBulkTranslation() {
+  if (!translateAllButton) return;
+
+  translateAllButton.disabled = true;
+  bulkRequestId = `bulk-${Date.now()}`;
+  updateBulkStatus("Запрос на массовый перевод...");
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const [activeTab] = tabs;
+    if (!activeTab?.id) {
+      updateBulkStatus("Не удалось определить активную вкладку");
+      translateAllButton.disabled = false;
+      bulkRequestId = null;
+      return;
+    }
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { type: "transhotTranslateAll", requestId: bulkRequestId },
+      (response) => {
+        if (chrome.runtime.lastError || !response?.accepted) {
+          updateBulkStatus("Контент-скрипт недоступен на этой вкладке");
+          translateAllButton.disabled = false;
+          bulkRequestId = null;
+          return;
+        }
+
+        updateBulkStatus("Поиск изображений...");
+      }
+    );
+  });
+}
+
 function restoreChatgptKey() {
   chrome.storage.local.get(CHATGPT_KEY_STORAGE_KEY, (result) => {
     const saved = result[CHATGPT_KEY_STORAGE_KEY];
@@ -159,4 +225,11 @@ document.addEventListener("DOMContentLoaded", () => {
   fileInput.addEventListener("change", updatePathFromFile);
   debugToggle?.addEventListener("change", saveDebugMode);
   chatgptKeyInput?.addEventListener("input", saveChatgptKey);
+  translateAllButton?.addEventListener("click", requestBulkTranslation);
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type === "transhotTranslateAllProgress") {
+    handleBulkProgress(message);
+  }
 });

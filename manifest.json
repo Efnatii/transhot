@@ -16,7 +16,7 @@
   "background": {
     "service_worker": "src/background.js"
   },
-  "permissions": ["downloads", "storage"],
+  "permissions": ["downloads", "storage", "tabs"],
   "host_permissions": ["<all_urls>", "file:///*"],
   "content_scripts": [
     {

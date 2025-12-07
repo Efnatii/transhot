@@ -58,6 +58,21 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "transhotTranslateAll") {
+    handleTranslateAll(message.requestId)
+      .then((summary) => sendResponse({ accepted: true, summary }))
+      .catch((error) => {
+        console.error("Ошибка массового перевода", error);
+        sendResponse({ accepted: false, error: error?.message || String(error) });
+      });
+
+    return true;
+  }
+
+  return false;
+});
+
 function ensureOverlay() {
   if (overlay) return overlay;
 
@@ -570,16 +585,28 @@ function updateColliderTooltip(collider) {
 }
 
 async function startTranslation(target) {
-  if (!target || processingTargets.has(target)) return;
+  return translateTarget(target, { manageOverlay: true });
+}
+
+async function translateTarget(target, options = {}) {
+  const shouldManageOverlay = options.manageOverlay !== false;
+  if (!target || processingTargets.has(target)) {
+    return { status: "skippedBusy" };
+  }
+
   processingTargets.add(target);
-  setLoadingState(true, target);
+  if (shouldManageOverlay) {
+    setLoadingState(true, target);
+  }
 
   try {
     const targetForColliders = target;
-    const snapshot = await captureTargetSnapshot(target);
+    const snapshot = options.snapshot || (await captureTargetSnapshot(target));
     if (processedHashes.has(snapshot.hash)) {
-      hideOverlayForProcessed(target);
-      return;
+      if (shouldManageOverlay) {
+        hideOverlayForProcessed(target);
+      }
+      return { status: "skippedProcessed", hash: snapshot.hash };
     }
 
     const credentials = await loadVisionCredentials();
@@ -605,13 +632,94 @@ async function startTranslation(target) {
     if (targetForColliders?.isConnected) {
       renderTextColliders(targetForColliders, snapshot.hash);
     }
-    hideOverlayForProcessed(target);
+    if (shouldManageOverlay) {
+      hideOverlayForProcessed(target);
+    }
+    return { status: "translated", hash: snapshot.hash };
   } catch (error) {
     console.error("Ошибка перевода", error);
-    setLoadingState(false, target);
+    if (shouldManageOverlay) {
+      setLoadingState(false, target);
+    }
+    return { status: "failed", error };
   } finally {
     processingTargets.delete(target);
   }
+}
+
+function getTranslatableImages() {
+  const overlayElement = ensureOverlay();
+  return Array.from(document.querySelectorAll("img")).filter((img) => overlayFitsTarget(overlayElement, img));
+}
+
+function notifyBulkProgress(requestId, payload) {
+  chrome.runtime.sendMessage({ type: "transhotTranslateAllProgress", requestId, ...payload });
+}
+
+async function handleTranslateAll(requestId) {
+  const images = getTranslatableImages();
+  const discovered = [];
+  const seenHashes = new Set();
+  let skippedProcessed = 0;
+
+  notifyBulkProgress(requestId, {
+    state: "discovering",
+    total: images.length,
+    completed: 0,
+    skipped: 0,
+    failed: 0,
+  });
+
+  for (const img of images) {
+    try {
+      const snapshot = await captureTargetSnapshot(img);
+      if (seenHashes.has(snapshot.hash)) {
+        continue;
+      }
+      seenHashes.add(snapshot.hash);
+
+      if (processedHashes.has(snapshot.hash)) {
+        skippedProcessed += 1;
+        continue;
+      }
+
+      discovered.push({ target: img, snapshot });
+    } catch (error) {
+      console.warn("Не удалось подготовить изображение", error);
+    }
+  }
+
+  let completed = 0;
+  let failed = 0;
+
+  for (const item of discovered) {
+    notifyBulkProgress(requestId, {
+      state: "translating",
+      total: discovered.length,
+      completed,
+      skipped: skippedProcessed,
+      failed,
+    });
+
+    const result = await translateTarget(item.target, { snapshot: item.snapshot, manageOverlay: false });
+    if (result?.status === "translated") {
+      completed += 1;
+    } else if (result?.status === "skippedProcessed") {
+      skippedProcessed += 1;
+    } else if (result?.status !== "skippedBusy") {
+      failed += 1;
+    }
+  }
+
+  notifyBulkProgress(requestId, {
+    state: "complete",
+    total: discovered.length,
+    completed,
+    skipped: skippedProcessed,
+    failed,
+  });
+
+  return { total: discovered.length, completed, skipped: skippedProcessed, failed };
 }
 
 function setLoadingState(loading, target) {
