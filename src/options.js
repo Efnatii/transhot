@@ -58,7 +58,6 @@ function updatePathFromFile() {
 
   const previousPath = selectedFileLabel.dataset.fullPath || currentPath;
   const safePath = filePath || file.name;
-  console.log("Выбран JSON-файл:", filePath || safePath);
   setSelectedFile(safePath);
 
   file
