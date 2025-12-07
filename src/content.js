@@ -502,6 +502,7 @@ async function startTranslation() {
     }
 
     const credentials = await loadVisionCredentials();
+    const chatgptApiKey = await loadChatgptApiKey();
     const visionResponse = await sendToVision(snapshot.base64, credentials);
     visionResults = { ...visionResults, [snapshot.hash]: visionResponse };
     const persistResponse = await persistResultInBackground(snapshot.hash, visionResponse);
@@ -510,7 +511,7 @@ async function startTranslation() {
     }
 
     const blockTexts = collectTextBlocks(visionResponse);
-    const translations = await translateBlocks(blockTexts, credentials);
+    const translations = await translateBlocks(blockTexts, chatgptApiKey);
     if (translations.length > 0) {
       translationResults = { ...translationResults, [snapshot.hash]: translations };
       const persistTranslationResponse = await persistTranslationInBackground(snapshot.hash, translations);
@@ -576,6 +577,16 @@ async function loadVisionCredentials() {
   throw new Error("Учетные данные Vision неполные: переукажите файл в настройках расширения");
 }
 
+async function loadChatgptApiKey() {
+  const result = await chrome.storage.local.get("chatgptApiKey");
+  const apiKey = (result.chatgptApiKey || "").trim();
+  if (!apiKey) {
+    throw new Error("API-ключ ChatGPT не найден: введите его в настройках расширения");
+  }
+
+  return apiKey;
+}
+
 async function sendToVision(base64Image, credentials) {
   const body = {
     requests: [
@@ -610,12 +621,12 @@ async function sendToVision(base64Image, credentials) {
   return response.json();
 }
 
-async function translateBlocks(blockTexts, credentials) {
+async function translateBlocks(blockTexts, apiKey) {
   if (!Array.isArray(blockTexts) || blockTexts.length === 0) return [];
 
   const translatedTexts = await sendToTranslation(
     blockTexts.map((item) => item.text),
-    credentials
+    apiKey
   );
 
   return blockTexts.map((block, index) => ({
@@ -625,51 +636,44 @@ async function translateBlocks(blockTexts, credentials) {
   }));
 }
 
-async function sendToTranslation(texts, credentials) {
+async function sendToTranslation(texts, apiKey) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
-  const headers = { "Content-Type": "application/json" };
-  const model = "gemini-2.5-flash";
-  let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-
-  if (credentials.apiKey) {
-    url = `${url}?key=${encodeURIComponent(credentials.apiKey)}`;
-  } else if (credentials.serviceAccount) {
-    const token = await getAccessToken(credentials.serviceAccount);
-    headers.Authorization = `Bearer ${token}`;
-  }
-
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
   const prompt = [
     "Translate each of the following text segments to Russian.",
-    "Return ONLY a JSON array of translated strings, matching the input order and length.",
+    "Respond with a JSON object in the shape { \"translations\": string[] }.",
+    "The translations array must match the input order and length.",
     `Input segments: ${JSON.stringify(texts)}`,
   ].join("\n");
 
-  const response = await fetch(url, {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers,
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: "application/json" },
+      model: "gpt-5-nano",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You translate text segments to Russian. Always answer with JSON and keep array length equal to the input.",
+        },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
     }),
   });
 
   if (!response.ok) {
     const details = await describeResponseError(response);
-    const hint =
-      response.status === 403
-        ? " Проверьте, что API-ключ или токен выдан для Gemini и не ограничен (ключи Vision без доступа к Gemini дают 403)."
-        : "";
-    throw new Error(
-      `Ответ Gemini: ${response.status}${details ? ` (${details})` : ""}${hint}`
-    );
+    throw new Error(`Ответ ChatGPT: ${response.status}${details ? ` (${details})` : ""}`);
   }
 
   const data = await response.json();
-  const textResponse = (data?.candidates?.[0]?.content?.parts || [])
-    .map((part) => part?.text || "")
-    .join("")
-    .trim();
+  const textResponse = data?.choices?.[0]?.message?.content?.trim() || "";
 
   const normalizeTranslations = (values) => {
     const arrayValues = Array.isArray(values) ? values : [values];
@@ -686,9 +690,10 @@ async function sendToTranslation(texts, credentials) {
 
   try {
     const parsed = JSON.parse(textResponse);
-    return normalizeTranslations(parsed);
+    const translations = parsed?.translations ?? parsed;
+    return normalizeTranslations(translations);
   } catch (error) {
-    console.warn("Не удалось распарсить JSON Gemini, используем построчный разбор", error);
+    console.warn("Не удалось распарсить JSON ChatGPT, используем построчный разбор", error);
   }
 
   return normalizeTranslations(textResponse.split(/\r?\n/));

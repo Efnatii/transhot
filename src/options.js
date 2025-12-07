@@ -2,12 +2,14 @@ const fileInput = document.getElementById("creds-file");
 const status = document.getElementById("status");
 const selectedFileLabel = document.getElementById("selected-file");
 const debugToggle = document.getElementById("debug-toggle");
+const chatgptKeyInput = document.getElementById("chatgpt-key");
 let statusTimeout;
 let currentPath = "";
 
 const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
 const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
 const DEBUG_MODE_KEY = "transhotDebugMode";
+const CHATGPT_KEY_STORAGE_KEY = "chatgptApiKey";
 
 function normalizeFilePath(file) {
   if (!file) return "";
@@ -133,9 +135,28 @@ function restoreDebugMode() {
   });
 }
 
+function saveChatgptKey(event) {
+  const value = (event?.target?.value ?? chatgptKeyInput?.value ?? "").trim();
+  chrome.storage.local.set({ [CHATGPT_KEY_STORAGE_KEY]: value }, () => {
+    const message = value ? "API-ключ ChatGPT сохранён" : "API-ключ ChatGPT очищен";
+    showStatus(message);
+  });
+}
+
+function restoreChatgptKey() {
+  chrome.storage.local.get(CHATGPT_KEY_STORAGE_KEY, (result) => {
+    const saved = result[CHATGPT_KEY_STORAGE_KEY];
+    if (typeof saved === "string" && chatgptKeyInput) {
+      chatgptKeyInput.value = saved;
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   restoreDebugMode();
+  restoreChatgptKey();
   fileInput.addEventListener("change", updatePathFromFile);
   debugToggle?.addEventListener("change", saveDebugMode);
+  chatgptKeyInput?.addEventListener("input", saveChatgptKey);
 });
