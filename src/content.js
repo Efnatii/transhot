@@ -251,22 +251,13 @@ function markHashProcessed(hash) {
 }
 
 async function loadVisionCredentials() {
-  const result = await chrome.storage.local.get("googleVisionCredsPath");
-  const path = result.googleVisionCredsPath;
-  if (!path) {
-    throw new Error("Путь к JSON с учетными данными Vision не указан");
-  }
-
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error("Не удалось загрузить файл с учетными данными Vision");
-  }
-
-  const creds = await response.json();
-  const apiKey = creds.apiKey || creds.key;
+  const result = await chrome.storage.local.get("googleVisionCredsData");
+  const storedCreds = result.googleVisionCredsData;
+  const apiKey = storedCreds?.apiKey;
   if (!apiKey) {
-    throw new Error("В JSON не найден apiKey");
+    throw new Error("Учетные данные Vision не найдены: переукажите файл в настройках расширения");
   }
+
   return { apiKey };
 }
 
