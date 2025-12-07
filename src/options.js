@@ -19,12 +19,19 @@ function normalizeFilePath(file) {
   return (rawPath || "").trim();
 }
 
-function extractApiKey(json) {
+function extractCredentials(json) {
   const apiKey = json.apiKey || json.key;
-  if (!apiKey || typeof apiKey !== "string") {
-    throw new Error("В JSON не найден apiKey или key");
+  if (apiKey && typeof apiKey === "string") {
+    return { type: "apiKey", apiKey: apiKey.trim() };
   }
-  return apiKey.trim();
+
+  const privateKey = json.private_key;
+  const clientEmail = json.client_email;
+  if (privateKey && clientEmail && typeof privateKey === "string" && typeof clientEmail === "string") {
+    return { type: "serviceAccount", serviceAccount: { privateKey, clientEmail } };
+  }
+
+  throw new Error("В JSON нет apiKey/key или service account полей");
 }
 
 function showStatus(message) {
@@ -58,14 +65,18 @@ function updatePathFromFile() {
     .text()
     .then((text) => {
       const parsed = JSON.parse(text);
-      const apiKey = extractApiKey(parsed);
+      const creds = extractCredentials(parsed);
       chrome.storage.local.set(
         {
           [CREDENTIALS_PATH_KEY]: safePath,
-          [CREDENTIALS_STORAGE_KEY]: { apiKey, fileName: deriveFileName(safePath, file.name) },
+          [CREDENTIALS_STORAGE_KEY]: { ...creds, fileName: deriveFileName(safePath, file.name) },
         },
         () => {
-          showStatus("Файл распознан и ключ сохранён");
+          showStatus(
+            creds.type === "apiKey"
+              ? "Файл распознан и API-ключ сохранён"
+              : "Файл распознан, сервисный аккаунт сохранён"
+          );
         }
       );
     })
