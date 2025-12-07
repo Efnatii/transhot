@@ -4,6 +4,17 @@ const selectedFileLabel = document.getElementById("selected-file");
 let statusTimeout;
 let currentPath = "";
 
+const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
+const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
+
+function extractApiKey(json) {
+  const apiKey = json.apiKey || json.key;
+  if (!apiKey || typeof apiKey !== "string") {
+    throw new Error("В JSON не найден apiKey или key");
+  }
+  return apiKey.trim();
+}
+
 function showStatus(message) {
   status.textContent = message;
   status.classList.add("visible");
@@ -30,7 +41,26 @@ function updatePathFromFile() {
     fileInput.value ||
     file.name;
   setSelectedFile(filePath);
-  savePath("Путь подставлен и сохранён автоматически", filePath);
+
+  file
+    .text()
+    .then((text) => {
+      const parsed = JSON.parse(text);
+      const apiKey = extractApiKey(parsed);
+      chrome.storage.local.set(
+        {
+          [CREDENTIALS_PATH_KEY]: filePath,
+          [CREDENTIALS_STORAGE_KEY]: { apiKey, fileName: deriveFileName(filePath, file.name) },
+        },
+        () => {
+          showStatus("Файл распознан и ключ сохранён");
+        }
+      );
+    })
+    .catch((error) => {
+      console.error("Не удалось прочитать файл с ключом Vision", error);
+      showStatus("Ошибка чтения файла: проверьте JSON");
+    });
 }
 
 function setSelectedFile(path) {
@@ -44,15 +74,22 @@ function setSelectedFile(path) {
 function savePath(message = "Путь сохранён автоматически", storedValue) {
   const value = (storedValue ?? selectedFileLabel.dataset.fullPath ?? currentPath).trim();
   setSelectedFile(value);
-  chrome.storage.local.set({ googleVisionCredsPath: value }, () => {
+  chrome.storage.local.set({ [CREDENTIALS_PATH_KEY]: value }, () => {
     showStatus(message);
   });
 }
 
 function restorePath() {
-  chrome.storage.local.get("googleVisionCredsPath", (result) => {
-    if (result.googleVisionCredsPath) {
-      setSelectedFile(result.googleVisionCredsPath);
+  chrome.storage.local.get([CREDENTIALS_PATH_KEY, CREDENTIALS_STORAGE_KEY], (result) => {
+    const savedPath = result[CREDENTIALS_PATH_KEY];
+    if (savedPath) {
+      setSelectedFile(savedPath);
+      return;
+    }
+
+    const savedName = result[CREDENTIALS_STORAGE_KEY]?.fileName;
+    if (savedName) {
+      setSelectedFile(savedName);
     }
   });
 }
