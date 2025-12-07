@@ -2,6 +2,7 @@ const OVERLAY_ID = "transhot-hover-overlay";
 const COLLIDERS_ID = "transhot-text-colliders";
 const ACTION_TRANSLATE = "translate";
 const ACTIVE_COLLIDER_CLASS = "active";
+const BLURRED_COLLIDER_CLASS = "blurred";
 
 let overlay;
 let hideTimer;
@@ -146,7 +147,10 @@ function handleMouseOut(event) {
 }
 
 function handleMouseMove(event) {
-  if (!debugMode || !colliderContainer) return;
+  if (!colliderContainer) return;
+
+  const colliders = Array.from(colliderContainer.children);
+  if (colliders.length === 0) return;
 
   const containerRect = colliderContainer.getBoundingClientRect();
   const withinContainer =
@@ -155,25 +159,26 @@ function handleMouseMove(event) {
     event.clientY >= containerRect.top &&
     event.clientY <= containerRect.bottom;
 
-  const colliders = Array.from(colliderContainer.children);
-  if (!withinContainer || colliders.length === 0) {
-    colliders.forEach((collider) => collider.classList.remove(ACTIVE_COLLIDER_CLASS));
-    return;
-  }
+  const hoveredCollider = withinContainer
+    ? colliders.find((collider) => {
+        const rect = collider.getBoundingClientRect();
+        return (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        );
+      })
+    : undefined;
 
-  const hoveredCollider = colliders.find((collider) => {
-    const rect = collider.getBoundingClientRect();
-    return (
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom
-    );
+  colliders.forEach((collider) => {
+    const isHovered = collider === hoveredCollider;
+    collider.classList.toggle(BLURRED_COLLIDER_CLASS, isHovered);
+    collider.classList.toggle(ACTIVE_COLLIDER_CLASS, debugMode && isHovered);
+    if (!debugMode && !isHovered) {
+      collider.classList.remove(ACTIVE_COLLIDER_CLASS);
+    }
   });
-
-  colliders.forEach((collider) =>
-    collider.classList.toggle(ACTIVE_COLLIDER_CLASS, collider === hoveredCollider)
-  );
 }
 
 function showOverlay(element) {
@@ -377,7 +382,7 @@ function toBoundingRect(vertices) {
   return { left: minX, top: minY, width, height };
 }
 
-function collectTextBlockBounds(visionResponse, naturalSize) {
+function collectWordBounds(visionResponse, naturalSize) {
   const responses = visionResponse?.responses;
   if (!Array.isArray(responses) || responses.length === 0) return [];
 
@@ -388,11 +393,15 @@ function collectTextBlockBounds(visionResponse, naturalSize) {
   const bounds = [];
   pages.forEach((page) => {
     page?.blocks?.forEach((block) => {
-      const vertices = extractVertices(block?.boundingBox || block?.boundingPoly, naturalSize);
-      const rect = toBoundingRect(vertices);
-      if (rect) {
-        bounds.push(rect);
-      }
+      block?.paragraphs?.forEach((paragraph) => {
+        paragraph?.words?.forEach((word) => {
+          const vertices = extractVertices(word?.boundingBox || word?.boundingPoly, naturalSize);
+          const rect = toBoundingRect(vertices);
+          if (rect) {
+            bounds.push(rect);
+          }
+        });
+      });
     });
   });
 
@@ -458,7 +467,7 @@ function renderTextColliders(target, hash) {
     return;
   }
 
-  const bounds = collectTextBlockBounds(visionResponse, naturalSize);
+  const bounds = collectWordBounds(visionResponse, naturalSize);
   if (bounds.length === 0) {
     clearColliders();
     return;
