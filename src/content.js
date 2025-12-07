@@ -216,7 +216,10 @@ async function startTranslation() {
 
     const credentials = await loadVisionCredentials();
     const visionResponse = await sendToVision(snapshot.base64, credentials);
-    await persistResult(snapshot.hash, visionResponse);
+    const persistResponse = await persistResultInBackground(snapshot.hash, visionResponse);
+    if (!persistResponse.success) {
+      throw new Error(persistResponse.error || "Не удалось сохранить результат Vision");
+    }
     markHashProcessed(snapshot.hash);
     hideOverlayForProcessed();
   } catch (error) {
@@ -387,26 +390,21 @@ async function getAccessToken(serviceAccount) {
   return cachedAccessToken.token;
 }
 
-async function persistResult(hash, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  await new Promise((resolve, reject) => {
-    chrome.downloads.download(
+function persistResultInBackground(hash, data) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
       {
-        url,
-        filename: `transhot/${hash}/vision-result.json`,
-        saveAs: false,
-        conflictAction: "overwrite",
+        type: "persistResult",
+        hash,
+        data,
       },
-      (downloadId) => {
+      (response) => {
         if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(downloadId);
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
         }
-        URL.revokeObjectURL(url);
+
+        resolve(response || { success: false, error: "Неизвестный ответ сервис-воркера" });
       }
     );
   });
