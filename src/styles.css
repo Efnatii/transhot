@@ -129,37 +129,14 @@
 .transhot-text-collider {
   box-sizing: border-box;
   pointer-events: none;
-  position: absolute;
-  border-radius: 22px 18px 26px 20px / 24px 28px 18px 22px;
-  overflow: hidden;
-  isolation: isolate;
+  border-radius: 2px;
 }
 
 .transhot-text-collider.blurred {
-  background:
-    radial-gradient(140% 120% at 28% 22%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.16)),
-    radial-gradient(150% 140% at 78% 70%, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.14));
-  backdrop-filter: blur(18px) contrast(0.85) saturate(0.95);
-  -webkit-backdrop-filter: blur(18px) contrast(0.85) saturate(0.95);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 12px 30px rgba(0, 0, 0, 0.26);
-  clip-path: polygon(
-    6% 10%, 22% 4%, 38% 7%, 55% 2%, 72% 8%, 88% 18%, 96% 32%, 94% 48%, 98% 62%, 90% 80%,
-    74% 90%, 58% 94%, 44% 98%, 28% 94%, 14% 86%, 8% 72%, 4% 56%, 4% 40%
-  );
-}
-
-.transhot-text-collider.blurred::after {
-  content: "";
-  position: absolute;
-  inset: -14px;
-  background:
-    radial-gradient(120% 120% at 16% 18%, rgba(255, 255, 255, 0.24), transparent 62%),
-    radial-gradient(110% 110% at 82% 22%, rgba(255, 255, 255, 0.22), transparent 70%),
-    radial-gradient(120% 120% at 48% 88%, rgba(255, 255, 255, 0.2), transparent 60%);
-  filter: blur(12px);
-  mix-blend-mode: screen;
-  mask-image: radial-gradient(140% 140% at 50% 50%, #000 62%, transparent 96%);
-  -webkit-mask-image: radial-gradient(140% 140% at 50% 50%, #000 62%, transparent 96%);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(14px) contrast(0.8);
+  -webkit-backdrop-filter: blur(14px) contrast(0.8);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 #transhot-text-colliders.debug-visible .transhot-text-collider {
