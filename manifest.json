@@ -13,6 +13,9 @@
       "48": "icons/icon48.png"
     }
   },
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "permissions": ["downloads", "storage"],
   "host_permissions": ["<all_urls>", "file:///*"],
   "content_scripts": [
