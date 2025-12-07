@@ -11,20 +11,26 @@ const targetCache = new WeakMap();
 let processedHashes = new Set();
 let cachedAccessToken;
 let visionResults = {};
+let translationResults = {};
 let debugMode = false;
 let colliderContainer;
 let colliderTarget;
 
-chrome.storage.local.get(["transhotProcessedHashes", "transhotVisionResults", "transhotDebugMode"], (result) => {
-  const storedHashes = Array.isArray(result.transhotProcessedHashes) ? result.transhotProcessedHashes : [];
-  const storedVisionResults = result.transhotVisionResults || {};
-  const combinedHashes = new Set([...storedHashes, ...Object.keys(storedVisionResults)]);
-  if (combinedHashes.size > 0) {
-    processedHashes = combinedHashes;
+chrome.storage.local.get(
+  ["transhotProcessedHashes", "transhotVisionResults", "transhotTranslationResults", "transhotDebugMode"],
+  (result) => {
+    const storedHashes = Array.isArray(result.transhotProcessedHashes) ? result.transhotProcessedHashes : [];
+    const storedVisionResults = result.transhotVisionResults || {};
+    const storedTranslations = result.transhotTranslationResults || {};
+    const combinedHashes = new Set([...storedHashes, ...Object.keys(storedVisionResults)]);
+    if (combinedHashes.size > 0) {
+      processedHashes = combinedHashes;
+    }
+    visionResults = storedVisionResults;
+    translationResults = storedTranslations;
+    setDebugMode(Boolean(result.transhotDebugMode));
   }
-  visionResults = storedVisionResults;
-  setDebugMode(Boolean(result.transhotDebugMode));
-});
+);
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
@@ -36,6 +42,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   if (changes.transhotVisionResults) {
     visionResults = changes.transhotVisionResults.newValue || {};
+  }
+
+  if (changes.transhotTranslationResults) {
+    translationResults = changes.transhotTranslationResults.newValue || {};
   }
 
   if (changes.transhotDebugMode) {
@@ -389,6 +399,52 @@ function collectTextBlockBounds(visionResponse, naturalSize) {
   return bounds;
 }
 
+function collectTextBlocks(visionResponse) {
+  const responses = visionResponse?.responses;
+  if (!Array.isArray(responses) || responses.length === 0) return [];
+
+  const [firstResponse] = responses;
+  const pages = firstResponse?.fullTextAnnotation?.pages;
+  if (!Array.isArray(pages)) return [];
+
+  const blocks = [];
+  pages.forEach((page) => {
+    page?.blocks?.forEach((block) => {
+      const text = extractTextFromBlock(block);
+      if (text) {
+        blocks.push(text);
+      }
+    });
+  });
+
+  return blocks;
+}
+
+function extractTextFromBlock(block) {
+  const paragraphs = block?.paragraphs;
+  if (!Array.isArray(paragraphs)) return "";
+
+  const paragraphTexts = paragraphs
+    .map((paragraph) => {
+      const words = paragraph?.words;
+      if (!Array.isArray(words)) return "";
+
+      const wordTexts = words
+        .map((word) => {
+          const symbols = word?.symbols;
+          if (!Array.isArray(symbols)) return "";
+
+          return symbols.map((symbol) => symbol?.text || "").join("");
+        })
+        .filter(Boolean);
+
+      return wordTexts.join(" ").trim();
+    })
+    .filter(Boolean);
+
+  return paragraphTexts.join("\n").trim();
+}
+
 function renderTextColliders(target, hash) {
   const naturalSize = getTargetNaturalSize(target);
   if (!naturalSize || !naturalSize.width || !naturalSize.height) return;
@@ -449,6 +505,17 @@ async function startTranslation() {
     if (!persistResponse.success) {
       throw new Error(persistResponse.error || "Не удалось сохранить результат Vision");
     }
+
+    const blockTexts = collectTextBlocks(visionResponse);
+    const translations = await translateBlocks(blockTexts, credentials);
+    if (translations.length > 0) {
+      translationResults = { ...translationResults, [snapshot.hash]: translations };
+      const persistTranslationResponse = await persistTranslationInBackground(snapshot.hash, translations);
+      if (!persistTranslationResponse.success) {
+        throw new Error(persistTranslationResponse.error || "Не удалось сохранить перевод");
+      }
+    }
+
     markHashProcessed(snapshot.hash);
     if (targetForColliders?.isConnected) {
       renderTextColliders(targetForColliders, snapshot.hash);
@@ -539,6 +606,46 @@ async function sendToVision(base64Image, credentials) {
   return response.json();
 }
 
+async function translateBlocks(blockTexts, credentials) {
+  if (!Array.isArray(blockTexts) || blockTexts.length === 0) return [];
+
+  const translatedTexts = await sendToTranslation(blockTexts, credentials);
+  return blockTexts.map((originalText, index) => ({
+    originalText,
+    translatedText: translatedTexts[index] || "",
+  }));
+}
+
+async function sendToTranslation(texts, credentials) {
+  if (!Array.isArray(texts) || texts.length === 0) return [];
+
+  const headers = { "Content-Type": "application/json" };
+  let url = "https://translation.googleapis.com/language/translate/v2";
+
+  if (credentials.apiKey) {
+    url = `${url}?key=${encodeURIComponent(credentials.apiKey)}`;
+  } else if (credentials.serviceAccount) {
+    const token = await getAccessToken(credentials.serviceAccount);
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ q: texts, target: "ru", format: "text" }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ответ Translation: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const translations = data?.data?.translations;
+  if (!Array.isArray(translations)) return [];
+
+  return translations.map((item) => item?.translatedText || "");
+}
+
 function base64UrlEncode(buffer) {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
   let binary = "";
@@ -562,7 +669,7 @@ async function createServiceAccountJwt(serviceAccount) {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: serviceAccount.clientEmail,
-    scope: "https://www.googleapis.com/auth/cloud-vision",
+    scope: "https://www.googleapis.com/auth/cloud-vision https://www.googleapis.com/auth/cloud-translation",
     aud: "https://oauth2.googleapis.com/token",
     iat: now,
     exp: now + 3600,
@@ -629,6 +736,26 @@ function persistResultInBackground(hash, data) {
         type: "persistResult",
         hash,
         data,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+
+        resolve(response || { success: false, error: "Неизвестный ответ сервис-воркера" });
+      }
+    );
+  });
+}
+
+function persistTranslationInBackground(hash, translations) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "persistTranslation",
+        hash,
+        translations,
       },
       (response) => {
         if (chrome.runtime.lastError) {
