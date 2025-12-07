@@ -382,7 +382,7 @@ function toBoundingRect(vertices) {
   return { left: minX, top: minY, width, height };
 }
 
-function collectTextBlockBounds(visionResponse, naturalSize) {
+function collectWordBounds(visionResponse, naturalSize) {
   const responses = visionResponse?.responses;
   if (!Array.isArray(responses) || responses.length === 0) return [];
 
@@ -393,11 +393,15 @@ function collectTextBlockBounds(visionResponse, naturalSize) {
   const bounds = [];
   pages.forEach((page) => {
     page?.blocks?.forEach((block) => {
-      const vertices = extractVertices(block?.boundingBox || block?.boundingPoly, naturalSize);
-      const rect = toBoundingRect(vertices);
-      if (rect) {
-        bounds.push(rect);
-      }
+      block?.paragraphs?.forEach((paragraph) => {
+        paragraph?.words?.forEach((word) => {
+          const vertices = extractVertices(word?.boundingBox || word?.boundingPoly, naturalSize);
+          const rect = toBoundingRect(vertices);
+          if (rect) {
+            bounds.push(rect);
+          }
+        });
+      });
     });
   });
 
@@ -463,7 +467,7 @@ function renderTextColliders(target, hash) {
     return;
   }
 
-  const bounds = collectTextBlockBounds(visionResponse, naturalSize);
+  const bounds = collectWordBounds(visionResponse, naturalSize);
   if (bounds.length === 0) {
     clearColliders();
     return;
