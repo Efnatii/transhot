@@ -7,6 +7,7 @@ let currentTarget;
 let isProcessing = false;
 const targetCache = new WeakMap();
 let processedHashes = new Set();
+let cachedAccessToken;
 
 chrome.storage.local.get("transhotProcessedHashes", (result) => {
   if (Array.isArray(result.transhotProcessedHashes)) {
@@ -254,11 +255,20 @@ async function loadVisionCredentials() {
   const result = await chrome.storage.local.get("googleVisionCredsData");
   const storedCreds = result.googleVisionCredsData;
   const apiKey = storedCreds?.apiKey;
-  if (!apiKey) {
+  const serviceAccount = storedCreds?.serviceAccount;
+  if (!apiKey && !serviceAccount) {
     throw new Error("Учетные данные Vision не найдены: переукажите файл в настройках расширения");
   }
 
-  return { apiKey };
+  if (apiKey) {
+    return { apiKey };
+  }
+
+  if (serviceAccount?.privateKey && serviceAccount?.clientEmail) {
+    return { serviceAccount };
+  }
+
+  throw new Error("Учетные данные Vision неполные: переукажите файл в настройках расширения");
 }
 
 async function sendToVision(base64Image, credentials) {
@@ -271,20 +281,110 @@ async function sendToVision(base64Image, credentials) {
     ],
   };
 
-  const response = await fetch(
-    `https://vision.googleapis.com/v1/images:annotate?key=${encodeURIComponent(credentials.apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  const headers = { "Content-Type": "application/json" };
+  let url = "https://vision.googleapis.com/v1/images:annotate";
+
+  if (credentials.apiKey) {
+    url = `${url}?key=${encodeURIComponent(credentials.apiKey)}`;
+  } else if (credentials.serviceAccount) {
+    const token = await getAccessToken(credentials.serviceAccount);
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
 
   if (!response.ok) {
     throw new Error(`Ответ Vision: ${response.status}`);
   }
 
   return response.json();
+}
+
+function base64UrlEncode(buffer) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function pemToArrayBuffer(pem) {
+  const cleaned = pem.replace(/-----BEGIN [^-]+-----/, "").replace(/-----END [^-]+-----/, "").replace(/\s+/g, "");
+  const binary = atob(cleaned);
+  const buffer = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    buffer[i] = binary.charCodeAt(i);
+  }
+  return buffer.buffer;
+}
+
+async function createServiceAccountJwt(serviceAccount) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: serviceAccount.clientEmail,
+    scope: "https://www.googleapis.com/auth/cloud-vision",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  };
+
+  const headerPayload = `${base64UrlEncode(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })))}.${base64UrlEncode(
+    new TextEncoder().encode(JSON.stringify(payload))
+  )}`;
+
+  const keyData = pemToArrayBuffer(serviceAccount.privateKey);
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signatureBuffer = await crypto.subtle.sign(
+    { name: "RSASSA-PKCS1-v1_5" },
+    cryptoKey,
+    new TextEncoder().encode(headerPayload)
+  );
+  const signature = base64UrlEncode(signatureBuffer);
+
+  return `${headerPayload}.${signature}`;
+}
+
+async function getAccessToken(serviceAccount) {
+  if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 30000) {
+    return cachedAccessToken.token;
+  }
+
+  const assertion = await createServiceAccountJwt(serviceAccount);
+  const form = new URLSearchParams({
+    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    assertion,
+  });
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Не удалось получить токен сервисного аккаунта: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const expiresInMs = (data.expires_in ?? 3600) * 1000;
+  cachedAccessToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + expiresInMs,
+  };
+
+  return cachedAccessToken.token;
 }
 
 async function persistResult(hash, data) {
