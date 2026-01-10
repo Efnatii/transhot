@@ -202,7 +202,7 @@ header h1 {
 }
 
 .field-label {
-  font-weight: 600;
+  font-weight: 400;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -259,7 +259,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .status-row {
   display: flex;
   align-items: center;
-  min-height: 18px;
   justify-content: flex-start;
 }
 
@@ -274,17 +273,20 @@ input[type="file"]::-webkit-file-upload-button:hover {
   opacity: 0;
   transition: opacity 160ms ease;
   text-align: left;
-  padding: 8px 10px;
+  padding: 0;
   border-radius: 8px;
-  border: 1px dashed var(--border);
+  border: 0;
   color: var(--text-muted);
   white-space: pre-line;
-  min-height: 18px;
+  min-height: 0;
   width: 100%;
 }
 
 #status.visible {
   opacity: 1;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  min-height: 18px;
 }
 
 .primary-button {
