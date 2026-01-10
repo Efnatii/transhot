@@ -4,23 +4,75 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Transhot — Отладка</title>
-    <link rel="stylesheet" href="options.css" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 16px;
+        color: #1f2937;
+        background: #f8fafc;
+      }
+      h1 {
+        margin-bottom: 8px;
+      }
+      .meta {
+        margin-bottom: 16px;
+        color: #4b5563;
+        font-size: 13px;
+      }
+      .entry {
+        background: #fff;
+        border-radius: 8px;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 12px;
+      }
+      .entry h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      .block {
+        margin-bottom: 12px;
+      }
+      .label {
+        font-weight: bold;
+        font-size: 13px;
+        text-transform: uppercase;
+        color: #6b7280;
+        margin-bottom: 4px;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #f1f5f9;
+        padding: 8px;
+        border-radius: 6px;
+        margin: 0;
+        font-size: 13px;
+      }
+      .empty {
+        color: #9ca3af;
+        font-style: italic;
+      }
+      .actions {
+        margin-bottom: 12px;
+      }
+      .action-button {
+        background: #1f2937;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .action-button:hover {
+        background: #111827;
+      }
+    </style>
   </head>
   <body>
-    <main class="options">
-      <header>
-        <h1>Transhot</h1>
-        <p class="subtitle">Отладка переводов на текущем сайте</p>
-      </header>
-
-      <section class="card compact">
-        <p id="debug-site" class="hint">Определяем сайт…</p>
-      </section>
-
-      <section id="debug-list" class="card compact debug-list" aria-live="polite">
-        <p class="hint">Загрузка переводов…</p>
-      </section>
-    </main>
+    <h1>Отладка перевода</h1>
+    <div class="meta" id="debug-site">Определяем сайт…</div>
+    <div id="debug-list" aria-live="polite"></div>
     <script src="debug.js"></script>
   </body>
 </html>
