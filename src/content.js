@@ -343,6 +343,9 @@ async function captureTargetSnapshot(target) {
 async function extractArrayBufferFromTarget(target) {
   if (target instanceof HTMLImageElement) {
     const src = target.currentSrc || target.src;
+    if (isFileUrl(src)) {
+      return fetchImageInBackground(src);
+    }
     try {
       const response = await fetch(src, { mode: "cors" });
       if (!response.ok) {
@@ -355,6 +358,14 @@ async function extractArrayBufferFromTarget(target) {
   }
 
   throw new Error("Неподдерживаемый тип элемента для перевода");
+}
+
+function isFileUrl(url) {
+  try {
+    return new URL(url, window.location.href).protocol === "file:";
+  } catch (error) {
+    return false;
+  }
 }
 
 function base64ToArrayBuffer(base64) {
