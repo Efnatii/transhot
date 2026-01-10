@@ -16,6 +16,8 @@ let processedHashes = new Set();
 let cachedAccessToken;
 let visionResults = {};
 let translationResults = {};
+let translationContexts = {};
+let imageMeta = {};
 let debugMode = false;
 let colliderContainer;
 let colliderTarget;
@@ -23,17 +25,28 @@ let colliderTooltip;
 let debugHighlightedTarget;
 
 chrome.storage.local.get(
-  ["transhotProcessedHashes", "transhotVisionResults", "transhotTranslationResults", "transhotDebugMode"],
+  [
+    "transhotProcessedHashes",
+    "transhotVisionResults",
+    "transhotTranslationResults",
+    "transhotTranslationContexts",
+    "transhotImageMeta",
+    "transhotDebugMode",
+  ],
   (result) => {
     const storedHashes = Array.isArray(result.transhotProcessedHashes) ? result.transhotProcessedHashes : [];
     const storedVisionResults = result.transhotVisionResults || {};
     const storedTranslations = result.transhotTranslationResults || {};
+    const storedContexts = result.transhotTranslationContexts || {};
+    const storedMeta = result.transhotImageMeta || {};
     const combinedHashes = new Set([...storedHashes, ...Object.keys(storedVisionResults)]);
     if (combinedHashes.size > 0) {
       processedHashes = combinedHashes;
     }
     visionResults = storedVisionResults;
     translationResults = storedTranslations;
+    translationContexts = storedContexts;
+    imageMeta = storedMeta;
     setDebugMode(Boolean(result.transhotDebugMode));
   }
 );
@@ -52,6 +65,14 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   if (changes.transhotTranslationResults) {
     translationResults = changes.transhotTranslationResults.newValue || {};
+  }
+
+  if (changes.transhotTranslationContexts) {
+    translationContexts = changes.transhotTranslationContexts.newValue || {};
+  }
+
+  if (changes.transhotImageMeta) {
+    imageMeta = changes.transhotImageMeta.newValue || {};
   }
 
   if (changes.transhotDebugMode) {
@@ -415,6 +436,48 @@ function bufferToBase64(buffer) {
   return btoa(binary);
 }
 
+function buildImageMeta(target, hash) {
+  if (!target || !hash) return null;
+  const imageUrl =
+    target instanceof HTMLImageElement ? target.currentSrc || target.src || "" : "";
+  const pageUrl = window.location.href;
+  let origin = "";
+  try {
+    origin = new URL(pageUrl).origin;
+  } catch (error) {
+    origin = window.location.origin || "";
+  }
+  const updatedAt = Date.now();
+  return {
+    imageUrl,
+    pages: [
+      {
+        origin,
+        url: pageUrl,
+        title: document.title || "",
+        updatedAt,
+      },
+    ],
+  };
+}
+
+function mergeImageMeta(previous = {}, next = {}) {
+  const pages = Array.isArray(previous.pages) ? [...previous.pages] : [];
+  const nextPage = Array.isArray(next.pages) ? next.pages[0] : undefined;
+  if (nextPage?.origin) {
+    const index = pages.findIndex((page) => page.origin === nextPage.origin);
+    if (index >= 0) {
+      pages[index] = { ...pages[index], ...nextPage };
+    } else {
+      pages.push(nextPage);
+    }
+  }
+  return {
+    imageUrl: next.imageUrl || previous.imageUrl || "",
+    pages,
+  };
+}
+
 function extractVertices(source, naturalSize) {
   if (!source) return [];
 
@@ -705,6 +768,15 @@ async function translateTarget(target, options = {}) {
       const persistTranslationResponse = await persistTranslationInBackground(snapshot.hash, translations);
       if (!persistTranslationResponse.success) {
         throw new Error(persistTranslationResponse.error || "Не удалось сохранить перевод");
+      }
+      const nextMeta = buildImageMeta(target, snapshot.hash);
+      if (nextMeta) {
+        imageMeta = { ...imageMeta, [snapshot.hash]: mergeImageMeta(imageMeta[snapshot.hash], nextMeta) };
+        await persistImageMetaInBackground(snapshot.hash, imageMeta[snapshot.hash]);
+      }
+      if (translationContext) {
+        translationContexts = { ...translationContexts, [snapshot.hash]: translationContext };
+        await persistTranslationContextInBackground(snapshot.hash, translationContext);
       }
     }
 
@@ -1312,6 +1384,46 @@ function persistTranslationInBackground(hash, translations) {
         type: "persistTranslation",
         hash,
         translations,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+
+        resolve(response || { success: false, error: "Неизвестный ответ сервис-воркера" });
+      }
+    );
+  });
+}
+
+function persistTranslationContextInBackground(hash, context) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "persistTranslationContext",
+        hash,
+        context,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+
+        resolve(response || { success: false, error: "Неизвестный ответ сервис-воркера" });
+      }
+    );
+  });
+}
+
+function persistImageMetaInBackground(hash, meta) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      {
+        type: "persistImageMeta",
+        hash,
+        meta,
       },
       (response) => {
         if (chrome.runtime.lastError) {

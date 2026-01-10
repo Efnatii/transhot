@@ -15,6 +15,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "persistTranslationContext") {
+    handlePersistTranslationContext(message)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }));
+
+    return true;
+  }
+
+  if (message?.type === "persistImageMeta") {
+    handlePersistImageMeta(message)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }));
+
+    return true;
+  }
+
   if (message?.type === "fetchImage") {
     handleFetchImage(message)
       .then((base64) => sendResponse({ success: true, base64 }))
@@ -46,6 +62,28 @@ async function handlePersistTranslation({ hash, translations }) {
   const updatedTranslations = { ...transhotTranslationResults, [hash]: translations };
 
   await chrome.storage.local.set({ transhotTranslationResults: updatedTranslations });
+}
+
+async function handlePersistTranslationContext({ hash, context }) {
+  if (!hash || typeof context !== "string") {
+    throw new Error("Неверные данные для сохранения контекста");
+  }
+
+  const { transhotTranslationContexts = {} } = await chrome.storage.local.get("transhotTranslationContexts");
+  const updatedContexts = { ...transhotTranslationContexts, [hash]: context };
+
+  await chrome.storage.local.set({ transhotTranslationContexts: updatedContexts });
+}
+
+async function handlePersistImageMeta({ hash, meta }) {
+  if (!hash || !meta) {
+    throw new Error("Неверные данные для сохранения метаданных изображения");
+  }
+
+  const { transhotImageMeta = {} } = await chrome.storage.local.get("transhotImageMeta");
+  const updatedMeta = { ...transhotImageMeta, [hash]: meta };
+
+  await chrome.storage.local.set({ transhotImageMeta: updatedMeta });
 }
 
 function arrayBufferToBase64(buffer) {
