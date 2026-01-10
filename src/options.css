@@ -1,6 +1,12 @@
 :root {
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   color-scheme: light;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --border: #9ca3af;
+  --surface: #ffffff;
+  --surface-muted: #f3f4f6;
 }
 
 * {
@@ -8,20 +14,21 @@
 }
 
 body {
-  margin: 0;
-  padding: 24px;
-  background: radial-gradient(circle at top, #f5f7ff 0%, #eef2f7 45%, #e7ecf3 100%);
-  color: #111827;
+  margin: 12px;
+  min-width: 320px;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
 .popup-shell {
   width: 360px;
-  padding: 18px;
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  border-radius: 20px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  padding: 0;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .options {
@@ -29,13 +36,13 @@ body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .popup-panel {
   max-width: 100%;
   margin: 0;
-  gap: 14px;
+  gap: 12px;
 }
 
 header {
@@ -47,30 +54,31 @@ header {
 
 header h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
   margin: 0;
-  color: #4b5563;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .card {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 18px 18px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .card.compact {
-  padding: 16px 16px;
+  padding: 0;
 }
 
 .collapsible {
@@ -80,17 +88,18 @@ header h1 {
 .collapsible-summary {
   list-style: none;
   cursor: pointer;
-  font-weight: 700;
-  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 0;
 }
 
 .collapsible:not([open]) .collapsible-summary {
-  padding: 8px 16px;
+  padding: 0;
 }
 
 .collapsible-summary::-webkit-details-marker {
@@ -98,45 +107,45 @@ header h1 {
 }
 
 .collapsible-summary::after {
-  content: "▾";
-  font-size: 16px;
-  color: #6b7280;
-  transition: transform 150ms ease;
+  content: "";
+  display: none;
 }
 
 .collapsible[open] .collapsible-summary::after {
-  transform: rotate(180deg);
+  transform: none;
 }
 
 .collapsible-body {
-  margin-top: 4px;
-  padding: 0 16px 16px;
+  margin-top: 8px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .card-row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .toggle-row {
-  gap: 12px;
+  gap: 8px;
 }
 
 .bulk-row {
-  gap: 10px;
+  gap: 8px;
 }
 
 .toggle {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   cursor: pointer;
   width: fit-content;
   user-select: none;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .toggle input {
@@ -146,10 +155,10 @@ header h1 {
 }
 
 .toggle-switch {
-  width: 44px;
-  height: 24px;
-  border: 1px solid #d1d5db;
-  background: #e5e7eb;
+  width: 36px;
+  height: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
   border-radius: 999px;
   position: relative;
   transition: all 150ms ease;
@@ -158,54 +167,55 @@ header h1 {
 .toggle-switch::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 18px;
-  height: 18px;
-  background: #ffffff;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  background: var(--surface);
   border-radius: 50%;
   transition: all 150ms ease;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
 }
 
 .toggle input:focus-visible + .toggle-switch {
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 2px rgba(31, 41, 55, 0.25);
 }
 
 .toggle input:checked + .toggle-switch {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--text-primary);
+  border-color: var(--text-primary);
 }
 
 .toggle input:checked + .toggle-switch::after {
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 
 .toggle-label {
   font-weight: 600;
-  color: #111827;
+  color: var(--text-secondary);
 }
 
 .file-row {
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
   text-align: left;
 }
 
 .field-label {
   font-weight: 600;
-  color: #111827;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 input[type="text"],
 input[type="password"],
 select {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-  background: #ffffff;
-  color: #111827;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text-primary);
   outline: none;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
@@ -213,20 +223,21 @@ select {
 input[type="text"]:focus,
 input[type="password"]:focus,
 select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px rgba(31, 41, 55, 0.2);
 }
 
 input[type="file"] {
   cursor: pointer;
-  color: #111827;
+  color: var(--text-primary);
   align-self: flex-start;
+  font-size: 12px;
 }
 
 input[type="file"]::-webkit-file-upload-button {
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #d1d5db;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px 12px;
   margin-right: 10px;
@@ -236,8 +247,8 @@ input[type="file"]::-webkit-file-upload-button {
 }
 
 input[type="file"]::-webkit-file-upload-button:hover {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px rgba(31, 41, 55, 0.15);
 }
 
 #selected-file {
@@ -248,21 +259,28 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .status-row {
   display: flex;
   align-items: center;
-  min-height: 22px;
-  justify-content: center;
+  min-height: 18px;
+  justify-content: flex-start;
 }
 
 .hint,
 #status {
   margin: 0;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 #status {
   opacity: 0;
   transition: opacity 160ms ease;
-  text-align: center;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  white-space: pre-line;
+  min-height: 18px;
+  width: 100%;
 }
 
 #status.visible {
@@ -271,34 +289,35 @@ input[type="file"]::-webkit-file-upload-button:hover {
 
 .primary-button {
   align-self: center;
-  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 18px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  border-radius: 8px;
+  padding: 8px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25);
-  transition: transform 120ms ease, box-shadow 120ms ease, opacity 160ms ease;
+  font-size: 12px;
+  box-shadow: none;
+  transition: transform 0.1s ease, background 0.2s ease, color 0.2s ease;
 }
 
 .primary-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 20px rgba(37, 99, 235, 0.3);
+  background: var(--text-primary);
+  color: var(--surface);
 }
 
 .primary-button:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 }
 
 .primary-button:disabled {
   cursor: not-allowed;
-  background: #d1d5db;
-  color: #6b7280;
-  box-shadow: none;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  border-color: var(--border);
 }
 
 ::placeholder {
-  color: #9ca3af;
+  color: var(--text-muted);
 }

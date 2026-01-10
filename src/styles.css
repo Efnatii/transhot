@@ -129,17 +129,21 @@
 .transhot-text-collider {
   box-sizing: border-box;
   pointer-events: none;
-  border-radius: 6px;
+  border-radius: 8px;
   position: absolute;
   overflow: visible;
   isolation: isolate;
-  transition: box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  transition: box-shadow 150ms ease, background-color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+  background: rgba(31, 41, 55, 0.06);
+  border: 1px solid rgba(156, 163, 175, 0.6);
+  box-shadow: none;
 }
 
 .transhot-text-collider.blurred {
-  background: transparent;
-  border: none;
+  background: rgba(31, 41, 55, 0.03);
+  border-color: rgba(156, 163, 175, 0.4);
   box-shadow: none;
+  opacity: 0.6;
 }
 
 #transhot-text-colliders.debug-visible .transhot-text-collider {
@@ -159,13 +163,13 @@
 .transhot-collider-tooltip {
   position: absolute;
   max-width: 320px;
-  padding: 12px 14px;
-  border-radius: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
   background: #ffffff;
-  color: #111827;
-  font: 600 13px/1.45 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
-  border: 1px solid #e5e7eb;
+  color: #1f2937;
+  font: 600 12px/1.45 "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  box-shadow: none;
+  border: 1px solid #9ca3af;
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity 120ms ease, transform 150ms ease;
