@@ -192,9 +192,11 @@ async function loadDebugData() {
 
   setDebugMessage("Загрузка переводов…");
 
+  const params = new URLSearchParams(window.location.search);
+  const sourceUrl = params.get("sourceUrl") || "";
   const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const activeTab = tabs[0];
-  const url = activeTab?.url || "";
+  const url = sourceUrl || activeTab?.url || "";
 
   let origin = "";
   try {
