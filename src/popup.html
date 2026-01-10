@@ -56,6 +56,35 @@
       </section>
 
       <section class="card compact">
+        <div class="card-row">
+          <label class="field-label" for="context-model">Модель контекста</label>
+          <select id="context-model">
+            <option value="gpt-5-nano">GPT-5 Nano ($0.45/1M токенов)</option>
+            <option value="gpt-4.1-nano">GPT-4.1 Nano ($0.5/1M токенов)</option>
+            <option value="gpt-4o-mini">GPT-4o Mini ($0.75/1M токенов)</option>
+            <option value="gpt-4.1-mini">GPT-4.1 Mini ($2/1M токенов)</option>
+            <option value="gpt-5-mini">GPT-5 Mini ($2.25/1M токенов)</option>
+            <option value="gpt-4.1">GPT-4.1 ($10/1M токенов)</option>
+            <option value="gpt-5.1">GPT-5.1 ($11.25/1M токенов)</option>
+            <option value="gpt-5">GPT-5 ($11.25/1M токенов)</option>
+            <option value="gpt-5.1-chat-latest">GPT-5.1 Chat Latest ($11.25/1M токенов)</option>
+            <option value="gpt-5-chat-latest">GPT-5 Chat Latest ($11.25/1M токенов)</option>
+            <option value="gpt-4o">GPT-4o ($12.5/1M токенов)</option>
+            <option value="gpt-5.2">GPT-5.2 ($15.75/1M токенов)</option>
+            <option value="gpt-5.2-chat-latest">GPT-5.2 Chat Latest ($15.75/1M токенов)</option>
+            <option value="gpt-4o-2024-05-13">GPT-4o (2024-05-13) ($20/1M токенов)</option>
+          </select>
+        </div>
+        <div class="card-row toggle-row">
+          <label class="toggle" for="context-enabled">
+            <input id="context-enabled" type="checkbox" />
+            <span class="toggle-switch" aria-hidden="true"></span>
+            <span class="toggle-label">Генерировать контекст перед переводом</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="card compact">
         <div class="card-row toggle-row">
           <label class="toggle" for="debug-toggle">
             <input id="debug-toggle" type="checkbox" />
