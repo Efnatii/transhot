@@ -659,6 +659,7 @@ async function translateTarget(target, options = {}) {
 
     const credentials = await loadVisionCredentials();
     const chatgptApiKey = await loadChatgptApiKey();
+    const chatgptModel = await loadChatgptModel();
     const visionResponse = await sendToVision(snapshot.base64, credentials);
     visionResults = { ...visionResults, [snapshot.hash]: visionResponse };
     const persistResponse = await persistResultInBackground(snapshot.hash, visionResponse);
@@ -667,7 +668,7 @@ async function translateTarget(target, options = {}) {
     }
 
     const blockTexts = collectTextBlocks(visionResponse);
-    const translations = await translateBlocks(blockTexts, chatgptApiKey);
+    const translations = await translateBlocks(blockTexts, chatgptApiKey, chatgptModel);
     if (translations.length > 0) {
       translationResults = { ...translationResults, [snapshot.hash]: translations };
       const persistTranslationResponse = await persistTranslationInBackground(snapshot.hash, translations);
@@ -851,6 +852,12 @@ async function loadChatgptApiKey() {
   return apiKey;
 }
 
+async function loadChatgptModel() {
+  const result = await chrome.storage.local.get("chatgptModel");
+  const model = (result.chatgptModel || "").trim();
+  return model || "gpt-5-nano";
+}
+
 async function sendToVision(base64Image, credentials) {
   const body = {
     requests: [
@@ -885,12 +892,13 @@ async function sendToVision(base64Image, credentials) {
   return response.json();
 }
 
-async function translateBlocks(blockTexts, apiKey) {
+async function translateBlocks(blockTexts, apiKey, model) {
   if (!Array.isArray(blockTexts) || blockTexts.length === 0) return [];
 
   const translatedTexts = await sendToTranslation(
     blockTexts.map((item) => item.text),
-    apiKey
+    apiKey,
+    model
   );
 
   return blockTexts.map((block, index) => ({
@@ -900,17 +908,18 @@ async function translateBlocks(blockTexts, apiKey) {
   }));
 }
 
-async function sendToTranslation(texts, apiKey) {
+async function sendToTranslation(texts, apiKey, model) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
   };
+  const delimiter = "\n|||";
   const prompt = [
     "Translate each of the following text segments to Russian.",
-    "Respond with a JSON object in the shape { \"translations\": string[] }.",
-    "The translations array must match the input order and length.",
+    `Return the translations in the same order, separated by the delimiter "${delimiter}".`,
+    "Do not add extra text before or after the translations.",
     `Input segments: ${JSON.stringify(texts)}`,
   ].join("\n");
 
@@ -918,16 +927,15 @@ async function sendToTranslation(texts, apiKey) {
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "gpt-5-nano",
+      model,
       messages: [
         {
           role: "system",
           content:
-            "You translate text segments to Russian. Always answer with JSON and keep array length equal to the input.",
+            "You translate text segments to Russian. Return only the translations separated by the provided delimiter.",
         },
         { role: "user", content: prompt },
       ],
-      response_format: { type: "json_object" },
     }),
   });
 
@@ -952,12 +960,9 @@ async function sendToTranslation(texts, apiKey) {
 
   if (!textResponse) return [];
 
-  try {
-    const parsed = JSON.parse(textResponse);
-    const translations = parsed?.translations ?? parsed;
-    return normalizeTranslations(translations);
-  } catch (error) {
-    console.warn("Не удалось распарсить JSON ChatGPT, используем построчный разбор", error);
+  const splitByDelimiter = textResponse.split(delimiter).map((item) => item.trim());
+  if (splitByDelimiter.length > 1) {
+    return normalizeTranslations(splitByDelimiter);
   }
 
   return normalizeTranslations(textResponse.split(/\r?\n/));

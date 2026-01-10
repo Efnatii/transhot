@@ -3,6 +3,7 @@ const status = document.getElementById("status");
 const selectedFileLabel = document.getElementById("selected-file");
 const debugToggle = document.getElementById("debug-toggle");
 const chatgptKeyInput = document.getElementById("chatgpt-key");
+const chatgptModelSelect = document.getElementById("chatgpt-model");
 const translateAllButton = document.getElementById("translate-all");
 const bulkStatus = document.getElementById("bulk-status");
 let statusTimeout;
@@ -13,6 +14,8 @@ const CREDENTIALS_STORAGE_KEY = "googleVisionCredsData";
 const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
 const DEBUG_MODE_KEY = "transhotDebugMode";
 const CHATGPT_KEY_STORAGE_KEY = "chatgptApiKey";
+const CHATGPT_MODEL_STORAGE_KEY = "chatgptModel";
+const DEFAULT_CHATGPT_MODEL = "gpt-5-nano";
 
 function normalizeFilePath(file) {
   if (!file) return "";
@@ -146,6 +149,14 @@ function saveChatgptKey(event) {
   });
 }
 
+function saveChatgptModel(event) {
+  const value = (event?.target?.value ?? chatgptModelSelect?.value ?? DEFAULT_CHATGPT_MODEL).trim();
+  if (!value) return;
+  chrome.storage.local.set({ [CHATGPT_MODEL_STORAGE_KEY]: value }, () => {
+    showStatus("Модель перевода сохранена");
+  });
+}
+
 function updateBulkStatus(text) {
   if (!bulkStatus) return;
   bulkStatus.textContent = text;
@@ -218,13 +229,24 @@ function restoreChatgptKey() {
   });
 }
 
+function restoreChatgptModel() {
+  chrome.storage.local.get(CHATGPT_MODEL_STORAGE_KEY, (result) => {
+    const saved = result[CHATGPT_MODEL_STORAGE_KEY];
+    if (chatgptModelSelect) {
+      chatgptModelSelect.value = typeof saved === "string" && saved ? saved : DEFAULT_CHATGPT_MODEL;
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   restoreDebugMode();
   restoreChatgptKey();
+  restoreChatgptModel();
   fileInput.addEventListener("change", updatePathFromFile);
   debugToggle?.addEventListener("change", saveDebugMode);
   chatgptKeyInput?.addEventListener("input", saveChatgptKey);
+  chatgptModelSelect?.addEventListener("change", saveChatgptModel);
   translateAllButton?.addEventListener("click", requestBulkTranslation);
 });
 
