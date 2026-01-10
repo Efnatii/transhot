@@ -918,8 +918,9 @@ async function sendToTranslation(texts, apiKey, model) {
   const delimiter = "\n|||";
   const prompt = [
     "Translate each of the following text segments to Russian.",
+    `There are ${texts.length} segments.`,
     `Return the translations in the same order, separated by the delimiter "${delimiter}".`,
-    "Do not add extra text before or after the translations.",
+    "Do not add extra text before or after the translations and do not use markdown.",
     `Input segments: ${JSON.stringify(texts)}`,
   ].join("\n");
 
@@ -965,7 +966,29 @@ async function sendToTranslation(texts, apiKey, model) {
     return normalizeTranslations(splitByDelimiter);
   }
 
-  return normalizeTranslations(textResponse.split(/\r?\n/));
+  const numberedItems = textResponse.match(/^\s*\d+[\).\-\s]+/m)
+    ? textResponse
+      .split(/\n(?=\s*\d+[\).\-\s]+)/)
+      .map((item) => item.replace(/^\s*\d+[\).\-\s]+/, "").trim())
+      .filter(Boolean)
+    : [];
+  if (numberedItems.length > 1) {
+    return normalizeTranslations(numberedItems);
+  }
+
+  const paragraphItems = textResponse
+    .split(/\n\s*\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (paragraphItems.length > 1) {
+    return normalizeTranslations(paragraphItems);
+  }
+
+  const lineItems = textResponse
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*\d+[\).\-\s]+/, "").trim())
+    .filter(Boolean);
+  return normalizeTranslations(lineItems.length > 0 ? lineItems : [textResponse]);
 }
 
 async function describeResponseError(response) {
