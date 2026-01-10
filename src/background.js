@@ -15,6 +15,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "fetchImage") {
+    handleFetchImage(message)
+      .then((base64) => sendResponse({ success: true, base64 }))
+      .catch((error) => sendResponse({ success: false, error: error?.message || String(error) }));
+
+    return true;
+  }
+
   return false;
 });
 
@@ -38,4 +46,27 @@ async function handlePersistTranslation({ hash, translations }) {
   const updatedTranslations = { ...transhotTranslationResults, [hash]: translations };
 
   await chrome.storage.local.set({ transhotTranslationResults: updatedTranslations });
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  return btoa(binary);
+}
+
+async function handleFetchImage({ url }) {
+  if (!url) {
+    throw new Error("Не указан URL изображения");
+  }
+
+  const response = await fetch(url, { credentials: "include" });
+  if (!response.ok) {
+    throw new Error(`Ответ изображения: ${response.status}`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  return arrayBufferToBase64(buffer);
 }
