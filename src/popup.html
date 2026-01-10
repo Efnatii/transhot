@@ -95,16 +95,43 @@
       </section>
 
       <section class="card compact">
-        <div class="card-row bulk-row">
-          <button id="translate-all" type="button" class="primary-button">Перевести все изображения</button>
-          <p id="bulk-status" class="hint" role="status" aria-live="polite"></p>
+        <div class="card-row popup-actions">
+          <button
+            id="translate-all"
+            type="button"
+            class="icon-button"
+            aria-label="Перевести все изображения"
+            title="Перевести все изображения"
+          >
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M3 12h18"></path>
+                <path d="M12 3a15 15 0 0 1 0 18"></path>
+                <path d="M12 3a15 15 0 0 0 0 18"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Перевести все изображения</span>
+          </button>
+          <button
+            id="open-debug"
+            type="button"
+            class="icon-button secondary"
+            aria-label="Открыть страницу отладки"
+            title="Открыть страницу отладки"
+          >
+            <span class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M14 7a4 4 0 1 0-4 4"></path>
+                <path d="M2 20l6-6"></path>
+                <path d="M13 11l5 5"></path>
+                <path d="M18 16l4-4"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Открыть страницу отладки</span>
+          </button>
         </div>
-      </section>
-
-      <section class="card compact">
-        <div class="card-row">
-          <button id="open-debug" type="button" class="primary-button">Открыть страницу отладки</button>
-        </div>
+        <p id="bulk-status" class="hint" role="status" aria-live="polite"></p>
       </section>
     </main>
     <script src="options.js"></script>
