@@ -241,8 +241,15 @@ function requestBulkTranslation() {
 }
 
 function openDebugPage() {
-  const debugUrl = chrome.runtime.getURL("src/debug.html");
-  chrome.tabs.create({ url: debugUrl });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const [activeTab] = tabs;
+    const sourceUrl = typeof activeTab?.url === "string" ? activeTab.url : "";
+    const debugUrl = new URL(chrome.runtime.getURL("src/debug.html"));
+    if (sourceUrl) {
+      debugUrl.searchParams.set("sourceUrl", sourceUrl);
+    }
+    chrome.tabs.create({ url: debugUrl.toString() });
+  });
 }
 
 function restoreChatgptKey() {
