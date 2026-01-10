@@ -911,17 +911,21 @@ async function translateBlocks(blockTexts, apiKey, model) {
 async function sendToTranslation(texts, apiKey, model) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
+  const doubleQuoteToken = "⟦DQUOTE⟧";
+  const maskedTexts = texts.map((text) => String(text ?? "").replace(/"/g, doubleQuoteToken));
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
   };
-  const delimiter = "\n|||";
+  const delimiter = "⟦TRANSHOT_DELIM⟧";
   const prompt = [
     "Translate each of the following text segments to Russian.",
-    `There are ${texts.length} segments.`,
+    `There are ${maskedTexts.length} segments.`,
     `Return the translations in the same order, separated by the delimiter "${delimiter}".`,
     "Do not add extra text before or after the translations and do not use markdown.",
-    `Input segments: ${JSON.stringify(texts)}`,
+    `Do not remove or alter the special tokens ${delimiter} and ${doubleQuoteToken}.`,
+    "Input segments (one per line):",
+    ...maskedTexts.map((text, index) => `${index + 1}) ${text}`),
   ].join("\n");
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -932,8 +936,12 @@ async function sendToTranslation(texts, apiKey, model) {
       messages: [
         {
           role: "system",
-          content:
-            "You translate text segments to Russian. Return only the translations separated by the provided delimiter.",
+          content: [
+            "You translate text segments to Russian.",
+            "Return only the translations separated by the provided delimiter.",
+            "Never remove or alter special tokens like ⟦TRANSHOT_DELIM⟧ or ⟦DQUOTE⟧.",
+            "Do not request or output JSON.",
+          ].join(" "),
         },
         { role: "user", content: prompt },
       ],
@@ -953,15 +961,21 @@ async function sendToTranslation(texts, apiKey, model) {
     const mapped = arrayValues.map((item) =>
       typeof item === "string" ? item : String(item ?? "")
     );
-    while (mapped.length < texts.length) {
-      mapped.push("");
+    const unmasked = mapped.map((item) =>
+      item.split(doubleQuoteToken).join("\"")
+    );
+    const normalized = dedupeRepeatedTranslations(unmasked, texts.length);
+    while (normalized.length < texts.length) {
+      normalized.push("");
     }
-    return mapped.slice(0, texts.length);
+    return normalized.slice(0, texts.length);
   };
 
   if (!textResponse) return [];
 
-  const splitByDelimiter = textResponse.split(delimiter).map((item) => item.trim());
+  const splitByDelimiter = textResponse
+    .split(delimiter)
+    .map((item) => item.trim());
   if (splitByDelimiter.length > 1) {
     return normalizeTranslations(splitByDelimiter);
   }
@@ -989,6 +1003,30 @@ async function sendToTranslation(texts, apiKey, model) {
     .map((line) => line.replace(/^\s*\d+[\).\-\s]+/, "").trim())
     .filter(Boolean);
   return normalizeTranslations(lineItems.length > 0 ? lineItems : [textResponse]);
+}
+
+function dedupeRepeatedTranslations(values, expectedLength) {
+  if (!Array.isArray(values) || values.length === 0) return [];
+  if (!expectedLength || values.length <= expectedLength) return values;
+
+  if (values.length % expectedLength === 0) {
+    const chunkCount = values.length / expectedLength;
+    let repeats = true;
+    for (let chunk = 1; chunk < chunkCount; chunk += 1) {
+      for (let index = 0; index < expectedLength; index += 1) {
+        if (values[index] !== values[chunk * expectedLength + index]) {
+          repeats = false;
+          break;
+        }
+      }
+      if (!repeats) break;
+    }
+    if (repeats) {
+      return values.slice(0, expectedLength);
+    }
+  }
+
+  return values;
 }
 
 async function describeResponseError(response) {
