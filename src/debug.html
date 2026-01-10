@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transhot — Отладка</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="options">
+      <header>
+        <h1>Transhot</h1>
+        <p class="subtitle">Отладка переводов на текущем сайте</p>
+      </header>
+
+      <section class="card compact">
+        <p id="debug-site" class="hint">Определяем сайт…</p>
+      </section>
+
+      <section id="debug-list" class="card compact debug-list" aria-live="polite">
+        <p class="hint">Загрузка переводов…</p>
+      </section>
+    </main>
+    <script src="debug.js"></script>
+  </body>
+</html>

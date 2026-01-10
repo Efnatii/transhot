@@ -8,6 +8,7 @@ const contextModelSelect = document.getElementById("context-model");
 const contextToggle = document.getElementById("context-enabled");
 const translateAllButton = document.getElementById("translate-all");
 const bulkStatus = document.getElementById("bulk-status");
+const debugPageButton = document.getElementById("open-debug");
 let statusTimeout;
 let currentPath = "";
 let bulkRequestId = null;
@@ -239,6 +240,11 @@ function requestBulkTranslation() {
   });
 }
 
+function openDebugPage() {
+  const debugUrl = chrome.runtime.getURL("src/debug.html");
+  chrome.tabs.create({ url: debugUrl });
+}
+
 function restoreChatgptKey() {
   chrome.storage.local.get(CHATGPT_KEY_STORAGE_KEY, (result) => {
     const saved = result[CHATGPT_KEY_STORAGE_KEY];
@@ -289,6 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
   contextModelSelect?.addEventListener("change", saveContextModel);
   contextToggle?.addEventListener("change", saveContextEnabled);
   translateAllButton?.addEventListener("click", requestBulkTranslation);
+  debugPageButton?.addEventListener("click", openDebugPage);
 });
 
 chrome.runtime.onMessage.addListener((message) => {
