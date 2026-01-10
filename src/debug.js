@@ -41,23 +41,8 @@ function createEntryElement({ hash, meta, translations, context, pageEntry }) {
   const container = document.createElement("article");
   container.className = "entry";
 
-  const header = document.createElement("div");
-  header.className = "entry-header";
-
   const title = document.createElement("h2");
-  title.className = "entry-title";
   title.textContent = pageEntry?.title || "Перевод изображения";
-
-  header.appendChild(title);
-
-  if (meta?.imageUrl) {
-    const thumbnail = document.createElement("img");
-    thumbnail.className = "entry-thumbnail";
-    thumbnail.src = meta.imageUrl;
-    thumbnail.alt = "Миниатюра изображения";
-    thumbnail.loading = "lazy";
-    header.appendChild(thumbnail);
-  }
 
   const actions = document.createElement("div");
   actions.className = "actions";
@@ -84,13 +69,14 @@ function createEntryElement({ hash, meta, translations, context, pageEntry }) {
   }
 
   const metaBlock = [
+    `Страница: ${pageEntry?.url || "Неизвестно"}`,
     `Последний перевод: ${formatDate(pageEntry?.updatedAt) || "—"}`,
     meta?.imageUrl ? `URL изображения: ${meta.imageUrl}` : null,
   ]
     .filter(Boolean)
     .join("\n");
 
-  container.appendChild(header);
+  container.appendChild(title);
   container.appendChild(createLabeledBlock("Метаданные", metaBlock));
   container.appendChild(actions);
   container.appendChild(blocksContainer);
