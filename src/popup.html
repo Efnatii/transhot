@@ -12,28 +12,28 @@
         <h1>Transhot</h1>
       </header>
 
-      <section class="card compact">
-        <div class="card-row file-row">
-          <label class="field-label" for="creds-file">Учетные данные Vision</label>
-          <p class="hint">Укажите путь к JSON с учетными данными Vision.</p>
-          <input id="creds-file" type="file" accept="application/json" />
-          <p id="selected-file" class="field-label" role="status" aria-live="polite">
-            Файл не выбран
-          </p>
-          <p class="hint">Используйте кнопку «Выбрать файл», чтобы выбрать JSON.</p>
+      <details class="card compact collapsible">
+        <summary class="collapsible-summary">API ключи</summary>
+        <div class="collapsible-body">
+          <div class="card-row file-row">
+            <label class="field-label" for="creds-file">Учетные данные Vision</label>
+            <p class="hint">Укажите путь к JSON с учетными данными Vision.</p>
+            <input id="creds-file" type="file" accept="application/json" />
+            <p id="selected-file" class="field-label" role="status" aria-live="polite">
+              Файл не выбран
+            </p>
+            <p class="hint">Используйте кнопку «Выбрать файл», чтобы выбрать JSON.</p>
+          </div>
+          <div class="status-row">
+            <span id="status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="card-row">
+            <label class="field-label" for="chatgpt-key">API-ключ ChatGPT</label>
+            <input id="chatgpt-key" type="password" placeholder="sk-..." autocomplete="off" />
+            <p class="hint">Ключ сохраняется локально и используется только для переводов.</p>
+          </div>
         </div>
-        <div class="status-row">
-          <span id="status" role="status" aria-live="polite"></span>
-        </div>
-      </section>
-
-      <section class="card compact">
-        <div class="card-row">
-          <label class="field-label" for="chatgpt-key">API-ключ ChatGPT</label>
-          <input id="chatgpt-key" type="password" placeholder="sk-..." autocomplete="off" />
-          <p class="hint">Ключ сохраняется локально и используется только для переводов.</p>
-        </div>
-      </section>
+      </details>
 
       <section class="card compact">
         <div class="card-row toggle-row">
