@@ -89,6 +89,10 @@ header h1 {
   padding: 12px 16px;
 }
 
+.collapsible:not([open]) .collapsible-summary {
+  padding: 8px 16px;
+}
+
 .collapsible-summary::-webkit-details-marker {
   display: none;
 }
