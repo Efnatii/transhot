@@ -4,6 +4,7 @@ const DEBUG_TARGET_CLASS = "transhot-debug-target";
 const ACTION_TRANSLATE = "translate";
 const ACTIVE_COLLIDER_CLASS = "active";
 const BLURRED_COLLIDER_CLASS = "blurred";
+const TARGET_LANGUAGE = "русский";
 
 let overlay;
 let hideTimer;
@@ -498,6 +499,23 @@ function collectTextBlocks(visionResponse) {
   return blocks;
 }
 
+function collectFullText(visionResponse) {
+  const responses = visionResponse?.responses;
+  if (!Array.isArray(responses) || responses.length === 0) return "";
+
+  const [firstResponse] = responses;
+  const fullText = firstResponse?.fullTextAnnotation?.text;
+  if (typeof fullText === "string" && fullText.trim()) {
+    return fullText.trim();
+  }
+
+  return collectTextBlocks(visionResponse)
+    .map((block) => block.text)
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
 function extractTextFromBlock(block) {
   const paragraphs = block?.paragraphs;
   if (!Array.isArray(paragraphs)) return "";
@@ -668,7 +686,20 @@ async function translateTarget(target, options = {}) {
     }
 
     const blockTexts = collectTextBlocks(visionResponse);
-    const translations = await translateBlocks(blockTexts, chatgptApiKey, chatgptModel);
+    const contextSettings = await loadContextSettings();
+    const textForContext = collectFullText(visionResponse);
+    let translationContext = "";
+    if (contextSettings.enabled) {
+      translationContext = await generateTranslationContext({
+        base64: snapshot.base64,
+        text: textForContext,
+        targetLanguage: TARGET_LANGUAGE,
+        apiKey: chatgptApiKey,
+        model: contextSettings.model,
+      });
+    }
+
+    const translations = await translateBlocks(blockTexts, chatgptApiKey, chatgptModel, translationContext);
     if (translations.length > 0) {
       translationResults = { ...translationResults, [snapshot.hash]: translations };
       const persistTranslationResponse = await persistTranslationInBackground(snapshot.hash, translations);
@@ -858,6 +889,13 @@ async function loadChatgptModel() {
   return model || "gpt-5-nano";
 }
 
+async function loadContextSettings() {
+  const result = await chrome.storage.local.get(["chatgptContextModel", "chatgptContextEnabled"]);
+  const model = (result.chatgptContextModel || "").trim() || "gpt-5-nano";
+  const enabled = Boolean(result.chatgptContextEnabled);
+  return { model, enabled };
+}
+
 async function sendToVision(base64Image, credentials) {
   const body = {
     requests: [
@@ -892,13 +930,14 @@ async function sendToVision(base64Image, credentials) {
   return response.json();
 }
 
-async function translateBlocks(blockTexts, apiKey, model) {
+async function translateBlocks(blockTexts, apiKey, model, translationContext) {
   if (!Array.isArray(blockTexts) || blockTexts.length === 0) return [];
 
   const translatedTexts = await sendToTranslation(
     blockTexts.map((item) => item.text),
     apiKey,
-    model
+    model,
+    translationContext
   );
 
   return blockTexts.map((block, index) => ({
@@ -908,7 +947,7 @@ async function translateBlocks(blockTexts, apiKey, model) {
   }));
 }
 
-async function sendToTranslation(texts, apiKey, model) {
+async function sendToTranslation(texts, apiKey, model, translationContext) {
   if (!Array.isArray(texts) || texts.length === 0) return [];
 
   const doubleQuoteToken = "⟦DQUOTE⟧";
@@ -918,7 +957,11 @@ async function sendToTranslation(texts, apiKey, model) {
     Authorization: `Bearer ${apiKey}`,
   };
   const delimiter = "⟦TRANSHOT_DELIM⟧";
+  const contextSection = translationContext
+    ? ["Translation context for accuracy, terminology, style, and tone:", translationContext, ""].join("\n")
+    : "";
   const prompt = [
+    contextSection,
     "Translate each of the following text segments to Russian.",
     `There are ${maskedTexts.length} segments.`,
     `Return the translations in the same order, separated by the delimiter "${delimiter}".`,
@@ -940,8 +983,13 @@ async function sendToTranslation(texts, apiKey, model) {
             "You translate text segments to Russian.",
             "Return only the translations separated by the provided delimiter.",
             "Never remove or alter special tokens like ⟦TRANSHOT_DELIM⟧ or ⟦DQUOTE⟧.",
+            translationContext
+              ? "Use the provided translation context to preserve terminology, style, and tone."
+              : "",
             "Do not request or output JSON.",
-          ].join(" "),
+          ]
+            .filter(Boolean)
+            .join(" "),
         },
         { role: "user", content: prompt },
       ],
@@ -1003,6 +1051,108 @@ async function sendToTranslation(texts, apiKey, model) {
     .map((line) => line.replace(/^\s*\d+[\).\-\s]+/, "").trim())
     .filter(Boolean);
   return normalizeTranslations(lineItems.length > 0 ? lineItems : [textResponse]);
+}
+
+function buildContextPrompt(targetLanguage, text) {
+  const safeText = text || "";
+  return [
+    `Проанализируй исходный текст и составь контекст для перевода на ${targetLanguage}.`,
+    "Нужны максимально полезные детали для переводчика.",
+    "Формат — строго по разделам ниже (кратко, пунктами).",
+    "",
+    "1) Тип текста и назначение:",
+    "- жанр/домен (художественный, техдок, маркетинг, UI, новости и т.п.)",
+    "- цель (информировать, убедить, инструктировать, описать, продать и т.п.)",
+    "- предполагаемая аудитория (если явно видно)",
+    "",
+    "2) Сеттинг:",
+    "- место действия, география, организации/локации (если указано)",
+    "- время/эпоха/период (если указано)",
+    "",
+    "3) Участники/персонажи:",
+    "- имена/роли/должности",
+    "- пол/род/местоимения (если явно указано)",
+    "- говорящие/адресаты (кто кому говорит)",
+    "",
+    "4) Отношения и социальные связи:",
+    "- отношения между персонажами (если явно есть)",
+    "- статус/иерархия (начальник‑подчинённый, клиент‑служба поддержки и т.п.)",
+    "",
+    "5) Сюжетные/фактологические опорные точки:",
+    "- ключевые события/факты, которые нельзя исказить",
+    "",
+    "6) Терминология и единообразие:",
+    "- термины/понятия/аббревиатуры, которые должны переводиться одинаково",
+    "- рекомендуемые варианты перевода, если явно вытекают из контекста",
+    "- что нельзя переводить или что оставлять как есть (только если это прямо следует из текста)",
+    "",
+    "7) Собственные имена и ономастика:",
+    "- имена, бренды, продукты, организации, топонимы",
+    "- как передавать: перевод/транслитерация/оставить как есть (оставлять как есть только при явном указании)",
+    "",
+    "8) Тональность и стиль:",
+    "- официальный/разговорный/нейтральный/художественный/ирония и т.п.",
+    "- уровень формальности и вежливости (ты/вы, обращения)",
+    "",
+    "9) Лингвистические особенности:",
+    "- сленг, жаргон, диалект, архаизмы",
+    "- игра слов/идиомы (если есть)",
+    "- цитаты/цитируемая речь",
+    "",
+    "10) Формат и технические требования:",
+    "- единицы измерения, валюты, даты, форматы",
+    "- требования к краткости/структуре",
+    "- повторяющиеся шаблоны/плейсхолдеры (если есть)",
+    "",
+    "Текст:",
+    safeText,
+    "",
+    "Выводи только разделы с краткими пунктами.",
+    "Если раздел не заполнен — напиши \"не указано\".",
+  ].join("\n");
+}
+
+async function generateTranslationContext({ base64, text, targetLanguage, apiKey, model }) {
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+  const systemPrompt = [
+    "Ты — ассистент переводчика. Составь контекст для качественного перевода.",
+    "Не пересказывай текст, не оценивай и не добавляй факты вне источника.",
+    "Если информации нет, укажи \"не указано\".",
+    "Фокусируйся на деталях, влияющих на точность, единообразие терминов, стиль и смысл.",
+    "Не предлагай оставлять имена/названия/термины без перевода, если это не явно указано в тексте.",
+    "Ответ должен быть структурированным и лаконичным.",
+  ].join(" ");
+  const prompt = buildContextPrompt(targetLanguage, text);
+  const imageUrl = `data:image/png;base64,${base64}`;
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await describeResponseError(response);
+    throw new Error(`Ответ ChatGPT (контекст): ${response.status}${details ? ` (${details})` : ""}`);
+  }
+
+  const data = await response.json();
+  return data?.choices?.[0]?.message?.content?.trim() || "";
 }
 
 function dedupeRepeatedTranslations(values, expectedLength) {

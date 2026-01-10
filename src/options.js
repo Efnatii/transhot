@@ -4,6 +4,8 @@ const selectedFileLabel = document.getElementById("selected-file");
 const debugToggle = document.getElementById("debug-toggle");
 const chatgptKeyInput = document.getElementById("chatgpt-key");
 const chatgptModelSelect = document.getElementById("chatgpt-model");
+const contextModelSelect = document.getElementById("context-model");
+const contextToggle = document.getElementById("context-enabled");
 const translateAllButton = document.getElementById("translate-all");
 const bulkStatus = document.getElementById("bulk-status");
 let statusTimeout;
@@ -15,6 +17,8 @@ const CREDENTIALS_PATH_KEY = "googleVisionCredsPath";
 const DEBUG_MODE_KEY = "transhotDebugMode";
 const CHATGPT_KEY_STORAGE_KEY = "chatgptApiKey";
 const CHATGPT_MODEL_STORAGE_KEY = "chatgptModel";
+const CONTEXT_MODEL_STORAGE_KEY = "chatgptContextModel";
+const CONTEXT_ENABLED_STORAGE_KEY = "chatgptContextEnabled";
 const DEFAULT_CHATGPT_MODEL = "gpt-5-nano";
 
 function normalizeFilePath(file) {
@@ -157,6 +161,21 @@ function saveChatgptModel(event) {
   });
 }
 
+function saveContextModel(event) {
+  const value = (event?.target?.value ?? contextModelSelect?.value ?? DEFAULT_CHATGPT_MODEL).trim();
+  if (!value) return;
+  chrome.storage.local.set({ [CONTEXT_MODEL_STORAGE_KEY]: value }, () => {
+    showStatus("Модель контекста сохранена");
+  });
+}
+
+function saveContextEnabled(event) {
+  const isEnabled = Boolean(event?.target?.checked ?? contextToggle?.checked);
+  chrome.storage.local.set({ [CONTEXT_ENABLED_STORAGE_KEY]: isEnabled }, () => {
+    showStatus(isEnabled ? "Генерация контекста включена" : "Генерация контекста выключена");
+  });
+}
+
 function updateBulkStatus(text) {
   if (!bulkStatus) return;
   bulkStatus.textContent = text;
@@ -238,15 +257,37 @@ function restoreChatgptModel() {
   });
 }
 
+function restoreContextModel() {
+  chrome.storage.local.get(CONTEXT_MODEL_STORAGE_KEY, (result) => {
+    const saved = result[CONTEXT_MODEL_STORAGE_KEY];
+    if (contextModelSelect) {
+      contextModelSelect.value = typeof saved === "string" && saved ? saved : DEFAULT_CHATGPT_MODEL;
+    }
+  });
+}
+
+function restoreContextEnabled() {
+  chrome.storage.local.get(CONTEXT_ENABLED_STORAGE_KEY, (result) => {
+    const saved = Boolean(result[CONTEXT_ENABLED_STORAGE_KEY]);
+    if (contextToggle) {
+      contextToggle.checked = saved;
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   restorePath();
   restoreDebugMode();
   restoreChatgptKey();
   restoreChatgptModel();
+  restoreContextModel();
+  restoreContextEnabled();
   fileInput.addEventListener("change", updatePathFromFile);
   debugToggle?.addEventListener("change", saveDebugMode);
   chatgptKeyInput?.addEventListener("input", saveChatgptKey);
   chatgptModelSelect?.addEventListener("change", saveChatgptModel);
+  contextModelSelect?.addEventListener("change", saveContextModel);
+  contextToggle?.addEventListener("change", saveContextEnabled);
   translateAllButton?.addEventListener("click", requestBulkTranslation);
 });
 
