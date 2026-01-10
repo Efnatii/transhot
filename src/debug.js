@@ -12,8 +12,8 @@ const STORAGE_KEYS = [
 function setDebugMessage(message) {
   if (debugList) {
     debugList.innerHTML = "";
-    const paragraph = document.createElement("p");
-    paragraph.className = "hint";
+    const paragraph = document.createElement("div");
+    paragraph.className = "empty";
     paragraph.textContent = message;
     debugList.appendChild(paragraph);
   }
@@ -27,139 +27,85 @@ function formatDate(timestamp) {
 }
 
 function createBlockElement(block, index) {
-  const element = document.createElement("div");
-  element.className = "debug-block";
-
   const original = typeof block === "string" ? "" : block?.originalText || "";
   const translated = typeof block === "string" ? block : block?.translatedText || "";
 
-  const header = document.createElement("div");
-  header.className = "debug-block-header";
-  header.textContent = `Блок ${index + 1}`;
-
-  const originalLabel = document.createElement("strong");
-  originalLabel.textContent = "Оригинал";
-  const originalText = document.createElement("div");
-  originalText.textContent = original || "—";
-
-  const translatedLabel = document.createElement("strong");
-  translatedLabel.textContent = "Перевод";
-  const translatedText = document.createElement("div");
-  translatedText.textContent = translated || "—";
-
-  element.appendChild(header);
-  element.appendChild(originalLabel);
-  element.appendChild(originalText);
-  element.appendChild(translatedLabel);
-  element.appendChild(translatedText);
-
-  return element;
+  return {
+    title: `Блок ${index + 1}`,
+    original,
+    translated,
+  };
 }
 
 function createEntryElement({ hash, meta, translations, context, pageEntry }) {
   const container = document.createElement("article");
-  container.className = "debug-entry";
+  container.className = "entry";
 
-  const header = document.createElement("div");
-  header.className = "debug-entry-header";
-
-  const image = document.createElement("img");
-  image.className = "debug-image";
-  image.alt = "Переведённое изображение";
-  if (meta?.imageUrl) {
-    image.src = meta.imageUrl;
-  } else {
-    image.classList.add("debug-image-placeholder");
-  }
-
-  const metaColumn = document.createElement("div");
-  metaColumn.className = "debug-meta";
-
-  const urlRow = document.createElement("div");
-  urlRow.className = "debug-meta-row";
-  const urlLabel = document.createElement("strong");
-  urlLabel.textContent = "Страница";
-  const urlValue = document.createElement("div");
-  urlValue.textContent = pageEntry?.url || "Неизвестно";
-  urlRow.appendChild(urlLabel);
-  urlRow.appendChild(urlValue);
-
-  const titleRow = document.createElement("div");
-  titleRow.className = "debug-meta-row";
-  const titleLabel = document.createElement("strong");
-  titleLabel.textContent = "Заголовок";
-  const titleValue = document.createElement("div");
-  titleValue.textContent = pageEntry?.title || "—";
-  titleRow.appendChild(titleLabel);
-  titleRow.appendChild(titleValue);
-
-  const timeRow = document.createElement("div");
-  timeRow.className = "debug-meta-row";
-  const timeLabel = document.createElement("strong");
-  timeLabel.textContent = "Последний перевод";
-  const timeValue = document.createElement("div");
-  timeValue.textContent = formatDate(pageEntry?.updatedAt) || "—";
-  timeRow.appendChild(timeLabel);
-  timeRow.appendChild(timeValue);
-
-  if (meta?.imageUrl) {
-    const imageRow = document.createElement("div");
-    imageRow.className = "debug-meta-row";
-    const imageLabel = document.createElement("strong");
-    imageLabel.textContent = "URL изображения";
-    const imageValue = document.createElement("div");
-    imageValue.textContent = meta.imageUrl;
-    imageRow.appendChild(imageLabel);
-    imageRow.appendChild(imageValue);
-    metaColumn.appendChild(imageRow);
-  }
-
-  metaColumn.appendChild(urlRow);
-  metaColumn.appendChild(titleRow);
-  metaColumn.appendChild(timeRow);
-
-  header.appendChild(image);
-  header.appendChild(metaColumn);
+  const title = document.createElement("h2");
+  title.textContent = pageEntry?.title || "Перевод изображения";
 
   const actions = document.createElement("div");
-  actions.className = "debug-actions";
+  actions.className = "actions";
   const deleteButton = document.createElement("button");
   deleteButton.type = "button";
-  deleteButton.className = "primary-button debug-delete";
+  deleteButton.className = "action-button";
   deleteButton.textContent = "Стереть перевод";
   deleteButton.dataset.hash = hash;
   actions.appendChild(deleteButton);
 
   const blocksContainer = document.createElement("div");
-  blocksContainer.className = "debug-blocks";
   const translationItems = Array.isArray(translations) ? translations : [];
   if (translationItems.length === 0) {
-    const emptyBlock = document.createElement("p");
-    emptyBlock.className = "hint";
+    const emptyBlock = document.createElement("div");
+    emptyBlock.className = "empty";
     emptyBlock.textContent = "Нет сохранённых блоков перевода.";
     blocksContainer.appendChild(emptyBlock);
   } else {
     translationItems.forEach((block, index) => {
-      blocksContainer.appendChild(createBlockElement(block, index));
+      const normalized = createBlockElement(block, index);
+      blocksContainer.appendChild(createLabeledBlock(`${normalized.title} — оригинал`, normalized.original));
+      blocksContainer.appendChild(createLabeledBlock(`${normalized.title} — перевод`, normalized.translated));
     });
   }
 
-  const contextSection = document.createElement("div");
-  contextSection.className = "debug-context-section";
-  const contextLabel = document.createElement("strong");
-  contextLabel.textContent = "Контекст";
-  const contextValue = document.createElement("div");
-  contextValue.className = "debug-context";
-  contextValue.textContent = context || "—";
-  contextSection.appendChild(contextLabel);
-  contextSection.appendChild(contextValue);
+  const metaBlock = [
+    `Страница: ${pageEntry?.url || "Неизвестно"}`,
+    `Последний перевод: ${formatDate(pageEntry?.updatedAt) || "—"}`,
+    meta?.imageUrl ? `URL изображения: ${meta.imageUrl}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
-  container.appendChild(header);
+  container.appendChild(title);
+  container.appendChild(createLabeledBlock("Метаданные", metaBlock));
   container.appendChild(actions);
   container.appendChild(blocksContainer);
-  container.appendChild(contextSection);
+  container.appendChild(createLabeledBlock("Контекст", context));
 
   return container;
+}
+
+function createLabeledBlock(label, value) {
+  const block = document.createElement("div");
+  block.className = "block";
+
+  const labelEl = document.createElement("div");
+  labelEl.className = "label";
+  labelEl.textContent = label;
+  block.appendChild(labelEl);
+
+  if (value) {
+    const pre = document.createElement("pre");
+    pre.textContent = value;
+    block.appendChild(pre);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "—";
+    block.appendChild(empty);
+  }
+
+  return block;
 }
 
 async function deleteTranslation(hash) {
@@ -205,7 +151,7 @@ async function loadDebugData() {
     origin = "";
   }
 
-  debugSite.textContent = origin ? `Сайт: ${origin}` : "Не удалось определить активный сайт.";
+  debugSite.textContent = origin ? `URL: ${origin}` : "Не удалось определить активный сайт.";
 
   const stored = await chrome.storage.local.get(STORAGE_KEYS);
   const translations = stored.transhotTranslationResults || {};
