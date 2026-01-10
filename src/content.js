@@ -332,8 +332,7 @@ async function captureTargetSnapshot(target) {
   const cached = targetCache.get(target);
   if (cached) return cached;
 
-  const blob = await extractBlobFromTarget(target);
-  const arrayBuffer = await blob.arrayBuffer();
+  const arrayBuffer = await extractArrayBufferFromTarget(target);
   const hash = await digestBuffer(arrayBuffer);
   const base64 = bufferToBase64(arrayBuffer);
   const snapshot = { hash, base64 };
@@ -341,14 +340,52 @@ async function captureTargetSnapshot(target) {
   return snapshot;
 }
 
-async function extractBlobFromTarget(target) {
+async function extractArrayBufferFromTarget(target) {
   if (target instanceof HTMLImageElement) {
     const src = target.currentSrc || target.src;
-    const response = await fetch(src, { mode: "cors" });
-    return response.blob();
+    try {
+      const response = await fetch(src, { mode: "cors" });
+      if (!response.ok) {
+        throw new Error(`Ответ изображения: ${response.status}`);
+      }
+      return await response.arrayBuffer();
+    } catch (error) {
+      return fetchImageInBackground(src);
+    }
   }
 
   throw new Error("Неподдерживаемый тип элемента для перевода");
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const buffer = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    buffer[i] = binary.charCodeAt(i);
+  }
+  return buffer.buffer;
+}
+
+function fetchImageInBackground(url) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({ type: "fetchImage", url }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+
+      if (!response?.success || !response?.base64) {
+        reject(new Error(response?.error || "Не удалось получить изображение через сервис-воркер"));
+        return;
+      }
+
+      try {
+        resolve(base64ToArrayBuffer(response.base64));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
 }
 
 async function digestBuffer(buffer) {
