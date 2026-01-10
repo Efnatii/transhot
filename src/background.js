@@ -63,10 +63,18 @@ async function handleFetchImage({ url }) {
   }
 
   const response = await fetch(url, { credentials: "include" });
-  if (!response.ok) {
+  if (!response.ok && !(isFileUrl(url) && response.status === 0)) {
     throw new Error(`Ответ изображения: ${response.status}`);
   }
 
   const buffer = await response.arrayBuffer();
   return arrayBufferToBase64(buffer);
+}
+
+function isFileUrl(url) {
+  try {
+    return new URL(url).protocol === "file:";
+  } catch (error) {
+    return false;
+  }
 }
